@@ -339,7 +339,7 @@ export function CreateClientWithEventDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className={cn(
         "transition-all duration-300 max-h-[90vh] overflow-y-auto",
-        showEventPanel ? "max-w-5xl" : "max-w-md"
+        showEventPanel ? "max-w-6xl" : "max-w-md"
       )}>
         <DialogHeader className="flex flex-row items-start justify-between">
           <DialogTitle>Novo Cliente</DialogTitle>
