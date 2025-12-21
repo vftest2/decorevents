@@ -29,12 +29,19 @@ const eventTypes = [
   'Outro',
 ];
 
+const clientTypeOptions = [
+  { value: 'standard', label: 'Padrão', description: 'Cliente comum' },
+  { value: 'vip', label: 'VIP', description: 'Cliente prioritário com benefícios' },
+  { value: 'premium', label: 'Premium', description: 'Cliente com acesso exclusivo' },
+];
+
 const clientSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
   email: z.string().trim().email('Email inválido').max(255, 'Email deve ter no máximo 255 caracteres').optional().or(z.literal('')),
   phone: z.string().trim().max(20, 'Telefone deve ter no máximo 20 caracteres').optional().or(z.literal('')),
   address: z.string().trim().max(255, 'Endereço deve ter no máximo 255 caracteres').optional().or(z.literal('')),
   notes: z.string().trim().max(1000, 'Observações devem ter no máximo 1000 caracteres').optional().or(z.literal('')),
+  client_type: z.enum(['standard', 'vip', 'premium']).default('standard'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -76,6 +83,7 @@ export function CreateClientWithEventDialog({
     phone: '',
     address: '',
     notes: '',
+    client_type: 'standard',
   });
 
   // Event form data
@@ -182,7 +190,7 @@ export function CreateClientWithEventDialog({
   };
 
   const resetForm = () => {
-    setClientData({ name: '', email: '', phone: '', address: '', notes: '' });
+    setClientData({ name: '', email: '', phone: '', address: '', notes: '', client_type: 'standard' });
     setEventData({
       title: '',
       description: '',
@@ -254,6 +262,7 @@ export function CreateClientWithEventDialog({
           phone: clientData.phone?.trim() || null,
           address: clientData.address?.trim() || null,
           notes: clientData.notes?.trim() || null,
+          client_type: clientData.client_type,
           entity_id: currentEntity.id,
         })
         .select('id')
@@ -389,16 +398,47 @@ export function CreateClientWithEventDialog({
         )}>
           {/* Client Form */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="client-name">Nome *</Label>
-              <Input
-                id="client-name"
-                value={clientData.name}
-                onChange={(e) => setClientData({ ...clientData, name: e.target.value })}
-                placeholder="Nome do cliente"
-                className={formErrors.name ? 'border-destructive' : ''}
-              />
-              {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="client-name">Nome *</Label>
+                <Input
+                  id="client-name"
+                  value={clientData.name}
+                  onChange={(e) => setClientData({ ...clientData, name: e.target.value })}
+                  placeholder="Nome do cliente"
+                  className={formErrors.name ? 'border-destructive' : ''}
+                />
+                {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="client-type">Tipo de Cliente</Label>
+                <Select
+                  value={clientData.client_type}
+                  onValueChange={(value: 'standard' | 'vip' | 'premium') => 
+                    setClientData({ ...clientData, client_type: value })
+                  }
+                >
+                  <SelectTrigger id="client-type">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "inline-flex items-center justify-center w-2 h-2 rounded-full",
+                            option.value === 'vip' && "bg-amber-500",
+                            option.value === 'premium' && "bg-purple-500",
+                            option.value === 'standard' && "bg-muted-foreground"
+                          )} />
+                          {option.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

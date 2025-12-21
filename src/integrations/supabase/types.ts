@@ -74,6 +74,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          client_type: Database["public"]["Enums"]["client_type"]
           created_at: string | null
           email: string | null
           entity_id: string
@@ -85,6 +86,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          client_type?: Database["public"]["Enums"]["client_type"]
           created_at?: string | null
           email?: string | null
           entity_id: string
@@ -96,6 +98,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          client_type?: Database["public"]["Enums"]["client_type"]
           created_at?: string | null
           email?: string | null
           entity_id?: string
@@ -764,6 +767,7 @@ export type Database = {
         | "decorator"
         | "employee"
         | "driver"
+      client_type: "standard" | "vip" | "premium"
       event_status:
         | "budget"
         | "confirmed"
@@ -905,6 +909,7 @@ export const Constants = {
         "employee",
         "driver",
       ],
+      client_type: ["standard", "vip", "premium"],
       event_status: [
         "budget",
         "confirmed",

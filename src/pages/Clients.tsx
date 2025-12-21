@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Phone, Mail, MapPin, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Search, Phone, Mail, MapPin, Pencil, Trash2, MoreVertical, Crown, Star } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -8,14 +8,19 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CreateClientWithEventDialog } from '@/components/clients/CreateClientWithEventDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useEntity } from '@/contexts/EntityContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { cn } from '@/lib/utils';
+
+type ClientType = 'standard' | 'vip' | 'premium';
 
 interface Client {
   id: string;
@@ -24,9 +29,16 @@ interface Client {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  client_type: ClientType;
   entity_id: string;
   created_at: string;
 }
+
+const clientTypeOptions = [
+  { value: 'standard', label: 'Padrão', color: 'bg-muted text-muted-foreground' },
+  { value: 'vip', label: 'VIP', color: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
+  { value: 'premium', label: 'Premium', color: 'bg-purple-500/10 text-purple-600 border-purple-500/30' },
+];
 
 const clientSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
@@ -34,6 +46,7 @@ const clientSchema = z.object({
   phone: z.string().trim().max(20, 'Telefone deve ter no máximo 20 caracteres').optional().or(z.literal('')),
   address: z.string().trim().max(255, 'Endereço deve ter no máximo 255 caracteres').optional().or(z.literal('')),
   notes: z.string().trim().max(1000, 'Observações devem ter no máximo 1000 caracteres').optional().or(z.literal('')),
+  client_type: z.enum(['standard', 'vip', 'premium']).default('standard'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -55,6 +68,7 @@ export default function Clients() {
     phone: '',
     address: '',
     notes: '',
+    client_type: 'standard',
   });
 
   useEffect(() => {
@@ -82,7 +96,7 @@ export default function Clients() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', address: '', notes: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', notes: '', client_type: 'standard' });
     setFormErrors({});
     setEditingClient(null);
   };
@@ -99,6 +113,7 @@ export default function Clients() {
       phone: client.phone || '',
       address: client.address || '',
       notes: client.notes || '',
+      client_type: client.client_type || 'standard',
     });
     setFormErrors({});
     setIsEditDialogOpen(true);
@@ -131,6 +146,7 @@ export default function Clients() {
         phone: formData.phone?.trim() || null,
         address: formData.address?.trim() || null,
         notes: formData.notes?.trim() || null,
+        client_type: formData.client_type,
         entity_id: currentEntity.id,
       };
 
@@ -218,16 +234,41 @@ export default function Clients() {
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12 border-2 border-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {client.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="h-12 w-12 border-2 border-primary/20">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {client.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {client.client_type === 'vip' && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center">
+                        <Star className="h-3 w-3 text-white fill-white" />
+                      </div>
+                    )}
+                    {client.client_type === 'premium' && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center">
+                        <Crown className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                        {client.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                          {client.name}
+                        </h3>
+                        {client.client_type !== 'standard' && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-[10px] px-1.5 py-0",
+                              clientTypeOptions.find(o => o.value === client.client_type)?.color
+                            )}
+                          >
+                            {clientTypeOptions.find(o => o.value === client.client_type)?.label}
+                          </Badge>
+                        )}
+                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -292,16 +333,46 @@ export default function Clients() {
             <DialogTitle>Editar Cliente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome do cliente"
-                className={formErrors.name ? 'border-destructive' : ''}
-              />
-              {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome do cliente"
+                  className={formErrors.name ? 'border-destructive' : ''}
+                />
+                {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="client_type">Tipo de Cliente</Label>
+                <Select
+                  value={formData.client_type}
+                  onValueChange={(value: ClientType) => 
+                    setFormData({ ...formData, client_type: value })
+                  }
+                >
+                  <SelectTrigger id="client_type">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "inline-flex items-center justify-center w-2 h-2 rounded-full",
+                            option.value === 'vip' && "bg-amber-500",
+                            option.value === 'premium' && "bg-purple-500",
+                            option.value === 'standard' && "bg-muted-foreground"
+                          )} />
+                          {option.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
