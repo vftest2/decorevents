@@ -51,15 +51,22 @@ export default function Auth() {
     setIsLoading(true);
 
     try {
-      // First, verify the entity exists
+      // First, verify the entity exists - using maybeSingle to avoid RLS errors
       const { data: entity, error: entityError } = await supabase
         .from('entities')
         .select('id, name, slug')
         .eq('slug', entitySlug.toLowerCase().trim())
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (entityError || !entity) {
+      if (entityError) {
+        console.error('Entity lookup error:', entityError);
+        toast.error('Erro ao verificar entidade');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!entity) {
         toast.error('Entidade não encontrada ou inativa');
         setIsLoading(false);
         return;
