@@ -1,17 +1,30 @@
-import { Package, AlertTriangle } from 'lucide-react';
+import { Package, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { InventoryItem } from '@/types';
 import { cn } from '@/lib/utils';
 
-interface InventoryCardProps {
+export interface InventoryCardProps {
   item: InventoryItem;
   onClick?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   index?: number;
 }
 
-export function InventoryCard({ item, onClick, index = 0 }: InventoryCardProps) {
+export function InventoryCard({ item, onClick, onEdit, onDelete, index = 0 }: InventoryCardProps) {
   const utilizationRate = ((item.totalQuantity - item.availableQuantity) / item.totalQuantity) * 100;
   const isLowStock = item.availableQuantity <= 2;
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.();
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+  };
 
   return (
     <div
@@ -40,6 +53,32 @@ export function InventoryCard({ item, onClick, index = 0 }: InventoryCardProps) 
               <AlertTriangle className="h-3 w-3" />
               Estoque baixo
             </Badge>
+          </div>
+        )}
+
+        {/* Action buttons on hover */}
+        {(onEdit || onDelete) && (
+          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onEdit && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                onClick={handleEdit}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-8 w-8 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
 
