@@ -90,6 +90,7 @@ export default function Agenda() {
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
+    setViewMode('day');
   };
 
   const handleMonthChange = (date: Date) => {
