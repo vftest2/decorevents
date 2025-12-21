@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Building2, 
   Palette, 
@@ -6,7 +6,8 @@ import {
   Bell, 
   Shield, 
   Upload,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
@@ -16,7 +17,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEntity } from '@/contexts/EntityContext';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const themeOptions = [
   { id: 'light', label: 'Claro', icon: '☀️' },
@@ -35,9 +39,96 @@ const colorPresets = [
 
 export default function Settings() {
   const { currentEntity } = useEntity();
-  const [selectedTheme, setSelectedTheme] = useState(currentEntity?.theme || 'light');
+  const navigate = useNavigate();
+  const [selectedTheme, setSelectedTheme] = useState<string>('light');
   const [selectedPreset, setSelectedPreset] = useState(0);
-  const [entityName, setEntityName] = useState(currentEntity?.name || '');
+  const [entityName, setEntityName] = useState('');
+  const [entitySlug, setEntitySlug] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentEntity) {
+      setEntityName(currentEntity.name || '');
+      setEntitySlug(currentEntity.slug || '');
+      setSelectedTheme(currentEntity.theme || 'light');
+      
+      // Find matching preset
+      const presetIndex = colorPresets.findIndex(
+        p => p.primary === currentEntity.primaryColor
+      );
+      if (presetIndex >= 0) {
+        setSelectedPreset(presetIndex);
+      }
+      setLoading(false);
+    }
+  }, [currentEntity]);
+
+  const handleSaveBranding = async () => {
+    if (!currentEntity?.id) return;
+
+    setSaving(true);
+    try {
+      const preset = colorPresets[selectedPreset];
+      const { error } = await supabase
+        .from('entities')
+        .update({
+          theme: selectedTheme,
+          primary_color: preset.primary,
+          secondary_color: preset.secondary,
+          accent_color: preset.accent
+        })
+        .eq('id', currentEntity.id);
+
+      if (error) throw error;
+
+      toast.success('Branding atualizado com sucesso');
+    } catch (error) {
+      console.error('Error updating branding:', error);
+      toast.error('Erro ao atualizar branding');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEntity = async () => {
+    if (!currentEntity?.id) return;
+
+    if (!entityName.trim()) {
+      toast.error('Nome da entidade é obrigatório');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('entities')
+        .update({
+          name: entityName.trim()
+        })
+        .eq('id', currentEntity.id);
+
+      if (error) throw error;
+
+      toast.success('Informações atualizadas com sucesso');
+    } catch (error) {
+      console.error('Error updating entity:', error);
+      toast.error('Erro ao atualizar informações');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Header title="Configurações" subtitle="Carregando..." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -84,7 +175,15 @@ export default function Settings() {
               <CardContent>
                 <div className="flex items-center gap-6">
                   <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted">
-                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    {currentEntity?.logo ? (
+                      <img 
+                        src={currentEntity.logo} 
+                        alt="Logo" 
+                        className="h-full w-full object-contain rounded-xl"
+                      />
+                    ) : (
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Button variant="outline">Fazer Upload</Button>
@@ -109,7 +208,7 @@ export default function Settings() {
                   {themeOptions.map((theme) => (
                     <button
                       key={theme.id}
-                      onClick={() => setSelectedTheme(theme.id as 'light' | 'dark' | 'auto')}
+                      onClick={() => setSelectedTheme(theme.id)}
                       className={cn(
                         'relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all duration-200',
                         selectedTheme === theme.id
@@ -218,7 +317,12 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button className="gradient-primary border-0 shadow-glow">
+                <Button 
+                  onClick={handleSaveBranding}
+                  disabled={saving}
+                  className="gradient-primary border-0 shadow-glow"
+                >
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Salvar Alterações
                 </Button>
               </CardContent>
@@ -248,28 +352,18 @@ export default function Settings() {
                     <Label htmlFor="slug">Identificador (Slug)</Label>
                     <Input
                       id="slug"
-                      value={currentEntity?.slug || ''}
+                      value={entitySlug}
                       readOnly
                       className="bg-muted"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">E-mail de Contato</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="contato@suaempresa.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      placeholder="(11) 99999-9999"
-                    />
-                  </div>
                 </div>
-                <Button className="gradient-primary border-0 shadow-glow">
+                <Button 
+                  onClick={handleSaveEntity}
+                  disabled={saving}
+                  className="gradient-primary border-0 shadow-glow"
+                >
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Salvar Alterações
                 </Button>
               </CardContent>
@@ -286,9 +380,9 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Funcionalidade de gestão de usuários em desenvolvimento...
-                </p>
+                <Button onClick={() => navigate('/entity-users')}>
+                  Ir para Gestão de Usuários
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
