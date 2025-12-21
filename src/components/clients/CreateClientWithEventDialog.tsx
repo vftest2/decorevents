@@ -656,23 +656,23 @@ export function CreateClientWithEventDialog({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="team" className="mt-4 space-y-4">
+                <TabsContent value="team" className="mt-4 space-y-4 flex-1 flex flex-col">
                   <p className="text-xs text-muted-foreground">
                     Selecione os membros da equipe para este evento.
                   </p>
 
                   {!eventData.start_date || !eventData.end_date ? (
-                    <div className="text-center py-4 text-muted-foreground">
+                    <div className="text-center py-8 text-muted-foreground flex-1 flex flex-col items-center justify-center">
                       <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-xs">Defina as datas primeiro.</p>
                     </div>
                   ) : entityUsers.length === 0 ? (
-                    <div className="text-center py-4 text-muted-foreground">
+                    <div className="text-center py-8 text-muted-foreground flex-1 flex flex-col items-center justify-center">
                       <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-xs">Nenhum usuário encontrado.</p>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 flex-1 overflow-y-auto border rounded-lg p-3 bg-muted/20">
                       {entityUsers.map((user) => (
                         <div
                           key={user.id}
