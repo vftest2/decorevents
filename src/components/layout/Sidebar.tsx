@@ -13,8 +13,7 @@ import {
   PartyPopper,
   LogOut,
   UserCog,
-  ClipboardList,
-  AlertTriangle
+  ClipboardList
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -27,7 +26,6 @@ const menuItems = [
   { icon: Calendar, label: 'Agenda', path: '/agenda' },
   { icon: Package, label: 'Estoque', path: '/inventory' },
   { icon: ClipboardList, label: 'Locações', path: '/rentals' },
-  { icon: AlertTriangle, label: 'Avarias', path: '/damages' },
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: UserCog, label: 'Usuários', path: '/users' },
   { icon: Truck, label: 'Logística', path: '/logistics' },

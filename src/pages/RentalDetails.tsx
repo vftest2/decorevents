@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Package, Loader2, Calendar, Clock, User, MapPin,
-  Plus, Trash2, Check, X, AlertTriangle, Camera
+  Plus, Trash2, Check, X, AlertTriangle, Camera, Eye, DollarSign
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
@@ -86,6 +86,21 @@ interface Rental {
   client?: { name: string; phone: string } | null;
 }
 
+interface RentalDamage {
+  id: string;
+  description: string;
+  severity: string | null;
+  quantity: number;
+  repair_cost: number | null;
+  status: string | null;
+  photos: string[] | null;
+  created_at: string;
+  inventory_item: {
+    id: string;
+    name: string;
+  } | null;
+}
+
 interface InventoryItem {
   id: string;
   name: string;
@@ -109,6 +124,7 @@ export default function RentalDetails() {
   
   const [rental, setRental] = useState<Rental | null>(null);
   const [rentalItems, setRentalItems] = useState<RentalItem[]>([]);
+  const [rentalDamages, setRentalDamages] = useState<RentalDamage[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,6 +180,19 @@ export default function RentalDetails() {
 
       if (itemsError) throw itemsError;
       setRentalItems(itemsData || []);
+
+      // Fetch damages for this rental
+      const { data: damagesData, error: damagesError } = await supabase
+        .from('item_damages')
+        .select(`
+          *,
+          inventory_item:inventory_items(id, name)
+        `)
+        .eq('rental_id', id)
+        .order('created_at', { ascending: false });
+
+      if (damagesError) throw damagesError;
+      setRentalDamages(damagesData || []);
     } catch (error) {
       console.error('Error fetching rental:', error);
       toast.error('Erro ao carregar locação');
@@ -461,6 +490,14 @@ export default function RentalDetails() {
             <TabsTrigger value="items">Itens da Locação</TabsTrigger>
             <TabsTrigger value="checkout">Checklist Saída</TabsTrigger>
             <TabsTrigger value="checkin">Retorno</TabsTrigger>
+            <TabsTrigger value="damages" className="gap-1">
+              Avarias
+              {rentalDamages.length > 0 && (
+                <span className="ml-1 rounded-full bg-destructive/20 text-destructive px-1.5 py-0.5 text-xs">
+                  {rentalDamages.length}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Items Tab */}
@@ -667,6 +704,119 @@ export default function RentalDetails() {
                 Finalizar Retorno
               </Button>
             )}
+          </TabsContent>
+
+          {/* Damages Tab */}
+          <TabsContent value="damages" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Avarias Registradas
+                </CardTitle>
+                <CardDescription>
+                  Avarias registradas nesta locação para cobrança
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {rentalDamages.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                    <p>Nenhuma avaria registrada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {rentalDamages.map((damage) => (
+                      <div 
+                        key={damage.id}
+                        className="p-4 rounded-lg border border-destructive/20 bg-destructive/5"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium">{damage.inventory_item?.name}</span>
+                              <span className={cn(
+                                'text-xs px-2 py-0.5 rounded-full',
+                                damage.severity === 'minor' && 'bg-yellow-100 text-yellow-700',
+                                damage.severity === 'moderate' && 'bg-orange-100 text-orange-700',
+                                damage.severity === 'severe' && 'bg-red-100 text-red-700',
+                                damage.severity === 'total_loss' && 'bg-red-200 text-red-800'
+                              )}>
+                                {damage.severity === 'minor' && 'Leve'}
+                                {damage.severity === 'moderate' && 'Moderado'}
+                                {damage.severity === 'severe' && 'Grave'}
+                                {damage.severity === 'total_loss' && 'Perda Total'}
+                              </span>
+                              <span className={cn(
+                                'text-xs px-2 py-0.5 rounded-full',
+                                damage.status === 'pending' && 'bg-yellow-100 text-yellow-700',
+                                damage.status === 'in_repair' && 'bg-blue-100 text-blue-700',
+                                damage.status === 'repaired' && 'bg-green-100 text-green-700',
+                                damage.status === 'written_off' && 'bg-gray-100 text-gray-700'
+                              )}>
+                                {damage.status === 'pending' && 'Pendente'}
+                                {damage.status === 'in_repair' && 'Em Reparo'}
+                                {damage.status === 'repaired' && 'Reparado'}
+                                {damage.status === 'written_off' && 'Baixado'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{damage.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Qtd: {damage.quantity} | Registrado em: {new Date(damage.created_at).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                          {damage.repair_cost && damage.repair_cost > 0 && (
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Custo Reparo</p>
+                              <p className="font-semibold text-destructive">
+                                R$ {damage.repair_cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {damage.photos && damage.photos.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {damage.photos.map((photo, idx) => (
+                              <a 
+                                key={idx}
+                                href={photo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative group"
+                              >
+                                <img 
+                                  src={photo} 
+                                  alt={`Foto ${idx + 1}`}
+                                  className="h-16 w-16 object-cover rounded border"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                  <Eye className="h-4 w-4 text-white" />
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Total de custos */}
+                    {rentalDamages.some(d => d.repair_cost && d.repair_cost > 0) && (
+                      <div className="flex justify-between items-center pt-4 border-t border-border">
+                        <span className="font-medium flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Total para Cobrança
+                        </span>
+                        <span className="text-lg font-bold text-destructive">
+                          R$ {rentalDamages
+                            .reduce((sum, d) => sum + (d.repair_cost || 0), 0)
+                            .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
