@@ -54,6 +54,9 @@ export function Header({
           </span>
         </Button>
 
+        {/* Custom children */}
+        {children}
+
         {/* Add Button */}
         {showAddButton && (
           <Button 
@@ -64,9 +67,6 @@ export function Header({
             <span className="hidden sm:inline">{addButtonLabel}</span>
           </Button>
         )}
-
-        {/* Custom children */}
-        {children}
       </div>
     </header>
   );
