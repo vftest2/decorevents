@@ -1,6 +1,5 @@
 import { Plus, User, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Event, EventStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { format, isSameDay } from 'date-fns';
@@ -49,9 +48,9 @@ export function AgendaSidebar({ selectedDate, events, onAddEvent, onEventClick }
               >
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="font-medium text-foreground text-sm">{event.title}</h4>
-                  <Badge className={cn('text-xs shrink-0', statusConfig[event.status].color)}>
+                  <span className={cn('text-xs shrink-0 px-2 py-0.5 rounded-full', statusConfig[event.status].color)}>
                     {statusConfig[event.status].label}
-                  </Badge>
+                  </span>
                 </div>
                 
                 {event.client && (
@@ -63,7 +62,7 @@ export function AgendaSidebar({ selectedDate, events, onAddEvent, onEventClick }
                 
                 <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>{format(new Date(event.startDate), 'HH:mm')}</span>
+                  <span>{format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}</span>
                 </div>
                 
                 {event.address && (
