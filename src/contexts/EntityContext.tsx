@@ -28,6 +28,13 @@ export function EntityProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+          setCurrentUser(null);
+          setCurrentEntity(null);
+          setIsLoading(false);
+          return;
+        }
+        
         if (session?.user) {
           // Defer fetching user profile to avoid deadlock
           setTimeout(() => {
@@ -42,13 +49,21 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
+        setIsLoading(false);
+        return;
+      }
+      
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id);
       } else {
         setIsLoading(false);
       }
+    }).catch(() => {
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
