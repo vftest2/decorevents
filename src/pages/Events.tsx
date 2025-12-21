@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LayoutGrid, Calendar as CalendarIcon, List, Plus, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
@@ -48,6 +49,7 @@ interface Client {
 }
 
 export default function Events() {
+  const navigate = useNavigate();
   const { currentEntity } = useEntity();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [statusFilter, setStatusFilter] = useState<EventStatus | 'all'>('all');
@@ -325,7 +327,7 @@ export default function Events() {
         ) : viewMode === 'calendar' ? (
           <EventCalendarView 
             events={filteredEvents}
-            onEventClick={(event) => console.log('Event clicked:', event)}
+            onEventClick={(event) => navigate(`/events/${event.id}`)}
           />
         ) : (
           <div className={cn(
@@ -338,7 +340,7 @@ export default function Events() {
                 key={event.id}
                 event={event}
                 index={index}
-                onClick={() => console.log('Event clicked:', event)}
+                onClick={() => navigate(`/events/${event.id}`)}
               />
             ))}
           </div>

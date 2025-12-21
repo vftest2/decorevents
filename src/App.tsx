@@ -11,6 +11,7 @@ import AdminEntityUsers from "./pages/AdminEntityUsers";
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Events from "./pages/Events";
+import EventDetails from "./pages/EventDetails";
 import Inventory from "./pages/Inventory";
 import Clients from "./pages/Clients";
 import EntityUsers from "./pages/EntityUsers";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/events/:eventId" element={<EventDetails />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/rentals" element={<Rentals />} />
             <Route path="/rentals/:rentalId" element={<RentalDetails />} />
