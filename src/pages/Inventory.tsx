@@ -7,7 +7,17 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +56,9 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -97,6 +110,37 @@ export default function Inventory() {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      category_id: '',
+      total_quantity: 1,
+      available_quantity: 1,
+      rental_price: 0,
+      photo: ''
+    });
+    setEditingItem(null);
+  };
+
+  const handleOpenDialog = (item?: InventoryItem) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData({
+        name: item.name,
+        description: item.description || '',
+        category_id: item.category_id || '',
+        total_quantity: item.total_quantity || 1,
+        available_quantity: item.available_quantity || 1,
+        rental_price: item.rental_price || 0,
+        photo: item.photo || ''
+      });
+    } else {
+      resetForm();
+    }
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -106,36 +150,67 @@ export default function Inventory() {
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('inventory_items').insert({
-        entity_id: currentEntity!.id,
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        category_id: formData.category_id || null,
-        total_quantity: formData.total_quantity,
-        available_quantity: formData.available_quantity,
-        rental_price: formData.rental_price,
-        photo: formData.photo.trim() || null
-      });
+      if (editingItem) {
+        const { error } = await supabase
+          .from('inventory_items')
+          .update({
+            name: formData.name.trim(),
+            description: formData.description.trim() || null,
+            category_id: formData.category_id || null,
+            total_quantity: formData.total_quantity,
+            available_quantity: formData.available_quantity,
+            rental_price: formData.rental_price,
+            photo: formData.photo.trim() || null
+          })
+          .eq('id', editingItem.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success('Item atualizado com sucesso');
+      } else {
+        const { error } = await supabase.from('inventory_items').insert({
+          entity_id: currentEntity!.id,
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          category_id: formData.category_id || null,
+          total_quantity: formData.total_quantity,
+          available_quantity: formData.available_quantity,
+          rental_price: formData.rental_price,
+          photo: formData.photo.trim() || null
+        });
 
-      toast.success('Item adicionado com sucesso');
+        if (error) throw error;
+        toast.success('Item adicionado com sucesso');
+      }
+
       setDialogOpen(false);
-      setFormData({
-        name: '',
-        description: '',
-        category_id: '',
-        total_quantity: 1,
-        available_quantity: 1,
-        rental_price: 0,
-        photo: ''
-      });
+      resetForm();
       fetchData();
     } catch (error) {
-      console.error('Error creating item:', error);
-      toast.error('Erro ao criar item');
+      console.error('Error saving item:', error);
+      toast.error(editingItem ? 'Erro ao atualizar item' : 'Erro ao criar item');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', itemToDelete.id);
+
+      if (error) throw error;
+      toast.success('Item removido com sucesso');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('Erro ao remover item');
+    } finally {
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -164,7 +239,7 @@ export default function Inventory() {
         subtitle={`${items.length} itens cadastrados`}
         showAddButton
         addButtonLabel="Novo Item"
-        onAddClick={() => setDialogOpen(true)}
+        onAddClick={() => handleOpenDialog()}
       />
 
       <div className="p-6 space-y-6">
@@ -246,7 +321,7 @@ export default function Inventory() {
             title="Nenhum item encontrado"
             description="Não há itens com os filtros selecionados. Tente ajustar a busca ou adicione novos itens."
             actionLabel="Adicionar Item"
-            onAction={() => setDialogOpen(true)}
+            onAction={() => handleOpenDialog()}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -273,18 +348,26 @@ export default function Inventory() {
                   createdAt: new Date()
                 }}
                 index={index}
-                onClick={() => console.log('Item clicked:', item)}
+                onClick={() => handleOpenDialog(item)}
+                onEdit={() => handleOpenDialog(item)}
+                onDelete={() => {
+                  setItemToDelete(item);
+                  setDeleteDialogOpen(true);
+                }}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Create Item Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Create/Edit Item Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) resetForm();
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Novo Item de Estoque</DialogTitle>
+            <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item de Estoque'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -371,18 +454,40 @@ export default function Inventory() {
               />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="gradient-primary border-0">
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Criar Item
+                {editingItem ? 'Salvar' : 'Criar Item'}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o item "{itemToDelete?.name}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
