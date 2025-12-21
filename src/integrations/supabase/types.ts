@@ -125,6 +125,7 @@ export type Database = {
           name: string
           primary_color: string | null
           secondary_color: string | null
+          sidebar_color: string | null
           slug: string
           theme: string | null
           updated_at: string | null
@@ -138,6 +139,7 @@ export type Database = {
           name: string
           primary_color?: string | null
           secondary_color?: string | null
+          sidebar_color?: string | null
           slug: string
           theme?: string | null
           updated_at?: string | null
@@ -151,6 +153,7 @@ export type Database = {
           name?: string
           primary_color?: string | null
           secondary_color?: string | null
+          sidebar_color?: string | null
           slug?: string
           theme?: string | null
           updated_at?: string | null

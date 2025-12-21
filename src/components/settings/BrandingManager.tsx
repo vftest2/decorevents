@@ -39,6 +39,19 @@ const defaultColorPresets = [
   { primary: '#3F51B5', secondary: '#E8EAF6', accent: '#FFEB3B', name: 'Azul Royal' },
 ];
 
+// Sidebar color presets
+const sidebarColorPresets = [
+  { color: '#1a1a2e', name: 'Escuro Padrão' },
+  { color: '#2d3436', name: 'Grafite' },
+  { color: '#1e3a5f', name: 'Azul Marinho' },
+  { color: '#2d4a3e', name: 'Verde Escuro' },
+  { color: '#3d2c29', name: 'Marrom' },
+  { color: '#4a1942', name: 'Vinho' },
+  { color: '#f5f5f5', name: 'Claro' },
+  { color: '#e8e8e8', name: 'Gelo' },
+  { color: '#fff5eb', name: 'Creme' },
+];
+
 interface ColorPreset {
   primary: string;
   secondary: string;
@@ -56,6 +69,7 @@ export function BrandingManager() {
     secondary: '#F5F0EB',
     accent: '#E8A83C',
   });
+  const [sidebarColor, setSidebarColor] = useState<string>('#1a1a2e');
   const [useCustomColors, setUseCustomColors] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -76,6 +90,7 @@ export function BrandingManager() {
   useEffect(() => {
     if (currentEntity) {
       setSelectedTheme(currentEntity.theme || 'light');
+      setSidebarColor(currentEntity.sidebarColor || '#1a1a2e');
       
       // Check if current colors match any preset
       const allPresets = [...defaultColorPresets, ...customPresets];
@@ -257,6 +272,7 @@ export function BrandingManager() {
           primary_color: colors.primary,
           secondary_color: colors.secondary,
           accent_color: colors.accent,
+          sidebar_color: sidebarColor,
         })
         .eq('id', currentEntity.id);
 
@@ -526,42 +542,117 @@ export function BrandingManager() {
             </div>
           </div>
 
+          {/* Sidebar Color */}
+          <div className="pt-4 border-t">
+            <Label className="text-sm font-medium mb-3 block">Cor do Menu Lateral</Label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+              {sidebarColorPresets.map((preset, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSidebarColor(preset.color)}
+                  className={cn(
+                    'relative flex flex-col items-center gap-1 rounded-lg border-2 p-2 transition-all duration-200',
+                    sidebarColor === preset.color
+                      ? 'border-primary shadow-glow'
+                      : 'border-border hover:border-primary/30'
+                  )}
+                  title={preset.name}
+                >
+                  <div
+                    className="h-8 w-8 rounded-md border border-border/50 shadow-sm"
+                    style={{ backgroundColor: preset.color }}
+                  />
+                  <span className="text-[10px] text-muted-foreground truncate w-full text-center">
+                    {preset.name}
+                  </span>
+                  {sidebarColor === preset.color && (
+                    <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Cor personalizada:</Label>
+              <div className="relative">
+                <input
+                  type="color"
+                  value={sidebarColor}
+                  onChange={(e) => setSidebarColor(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <div
+                  className="h-8 w-8 rounded-md border-2 border-border cursor-pointer hover:border-primary/50 transition-colors"
+                  style={{ backgroundColor: sidebarColor }}
+                />
+              </div>
+              <Input
+                value={sidebarColor}
+                onChange={(e) => setSidebarColor(e.target.value)}
+                className="font-mono text-sm w-28"
+                placeholder="#000000"
+              />
+            </div>
+          </div>
+
           {/* Preview */}
           <div className="pt-4 border-t">
             <Label className="text-sm font-medium mb-3 block">Pré-visualização</Label>
-            <div 
-              className="rounded-xl p-4 border"
-              style={{ backgroundColor: currentColors.secondary }}
-            >
-              <div className="flex items-center gap-4">
+            <div className="rounded-xl overflow-hidden border flex">
+              {/* Sidebar Preview */}
+              <div 
+                className="w-16 p-2 flex flex-col items-center gap-2"
+                style={{ 
+                  backgroundColor: sidebarColor,
+                  color: parseInt(sidebarColor.replace('#', ''), 16) > 0x888888 ? '#1a1a2e' : '#f5f5f5'
+                }}
+              >
                 <div 
-                  className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: currentColors.primary }}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                  style={{ backgroundColor: currentColors.primary, color: '#fff' }}
                 >
                   {currentEntity?.name?.charAt(0) || 'E'}
                 </div>
-                <div>
-                  <p className="font-semibold" style={{ color: currentColors.primary }}>
-                    {currentEntity?.name || 'Sua Empresa'}
-                  </p>
-                  <p className="text-sm" style={{ color: currentColors.accent }}>
-                    Texto de destaque
-                  </p>
-                </div>
+                <div className="w-8 h-1 rounded-full bg-current opacity-50" />
+                <div className="w-8 h-1 rounded-full bg-current opacity-30" />
+                <div className="w-8 h-1 rounded-full bg-current opacity-30" />
               </div>
-              <div className="mt-4 flex gap-2">
-                <button
-                  className="px-4 py-2 rounded-lg text-white text-sm font-medium"
-                  style={{ backgroundColor: currentColors.primary }}
-                >
-                  Botão Primário
-                </button>
-                <button
-                  className="px-4 py-2 rounded-lg text-white text-sm font-medium"
-                  style={{ backgroundColor: currentColors.accent }}
-                >
-                  Botão Destaque
-                </button>
+              {/* Content Preview */}
+              <div 
+                className="flex-1 p-4"
+                style={{ backgroundColor: currentColors.secondary }}
+              >
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                    style={{ backgroundColor: currentColors.primary }}
+                  >
+                    {currentEntity?.name?.charAt(0) || 'E'}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: currentColors.primary }}>
+                      {currentEntity?.name || 'Sua Empresa'}
+                    </p>
+                    <p className="text-xs" style={{ color: currentColors.accent }}>
+                      Texto de destaque
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
+                    style={{ backgroundColor: currentColors.primary }}
+                  >
+                    Primário
+                  </button>
+                  <button
+                    className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
+                    style={{ backgroundColor: currentColors.accent }}
+                  >
+                    Destaque
+                  </button>
+                </div>
               </div>
             </div>
           </div>
