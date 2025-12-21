@@ -23,15 +23,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Calendar, label: 'Agenda', path: '/agenda' },
   { icon: Package, label: 'Estoque', path: '/inventory' },
-  { icon: ClipboardList, label: 'Locações', path: '/rentals' },
-  { icon: Users, label: 'Clientes', path: '/clients' },
-  { icon: UserCog, label: 'Usuários', path: '/users' },
+  { icon: ClipboardList, label: 'Locação', path: '/rentals' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
   { icon: BarChart3, label: 'Relatórios', path: '/reports' },
-  { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
+
+const bottomMenuItem = { icon: Settings, label: 'Configurações', path: '/settings' };
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -70,7 +70,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -93,6 +93,25 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Settings - Fixed at Bottom */}
+        <div className="p-3 border-t border-sidebar-border">
+          <Link
+            to={bottomMenuItem.path}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+              location.pathname === bottomMenuItem.path
+                ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-glow'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              isCollapsed && 'justify-center px-2'
+            )}
+          >
+            <bottomMenuItem.icon className={cn('h-5 w-5 flex-shrink-0', location.pathname === bottomMenuItem.path && 'animate-scale-in')} />
+            {!isCollapsed && (
+              <span className="animate-fade-in truncate">{bottomMenuItem.label}</span>
+            )}
+          </Link>
+        </div>
 
         {/* User Section */}
         <div className="border-t border-sidebar-border p-3">
