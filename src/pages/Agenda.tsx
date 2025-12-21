@@ -6,6 +6,7 @@ import { AgendaMonthView } from '@/components/agenda/AgendaMonthView';
 import { AgendaWeekView } from '@/components/agenda/AgendaWeekView';
 import { AgendaDayView } from '@/components/agenda/AgendaDayView';
 import { AgendaSidebar } from '@/components/agenda/AgendaSidebar';
+import { CreateEventDialog } from '@/components/events/CreateEventDialog';
 import { useEntity } from '@/contexts/EntityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Event, EventStatus } from '@/types';
@@ -23,6 +24,7 @@ export default function Agenda() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     if (currentEntity?.id) {
@@ -108,8 +110,7 @@ export default function Agenda() {
   };
 
   const handleAddEvent = () => {
-    // TODO: Open create event modal
-    console.log('Add event for date:', selectedDate);
+    setIsCreateDialogOpen(true);
   };
 
   if (isLoading) {
@@ -191,6 +192,14 @@ export default function Agenda() {
           onEventClick={handleEventClick}
         />
       </div>
+
+      {/* Create Event Dialog */}
+      <CreateEventDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        defaultDate={selectedDate}
+        onEventCreated={fetchEvents}
+      />
     </MainLayout>
   );
 }
