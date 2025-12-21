@@ -7,6 +7,7 @@ import { EntityProvider } from "@/contexts/EntityContext";
 import Auth from "./pages/Auth";
 import AdminAuth from "./pages/AdminAuth";
 import AdminEntities from "./pages/AdminEntities";
+import AdminEntityUsers from "./pages/AdminEntityUsers";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import Inventory from "./pages/Inventory";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminAuth />} />
             <Route path="/admin/entities" element={<AdminEntities />} />
+            <Route path="/admin/entities/:entityId/users" element={<AdminEntityUsers />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/events" element={<Events />} />
             <Route path="/inventory" element={<Inventory />} />
