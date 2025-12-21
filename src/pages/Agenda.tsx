@@ -25,6 +25,7 @@ export default function Agenda() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedHour, setSelectedHour] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (currentEntity?.id) {
@@ -109,7 +110,11 @@ export default function Agenda() {
     console.log('Event clicked:', event);
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = (date?: Date, hour?: number) => {
+    if (date) {
+      setSelectedDate(date);
+    }
+    setSelectedHour(hour);
     setIsCreateDialogOpen(true);
   };
 
@@ -180,6 +185,7 @@ export default function Agenda() {
               selectedDate={selectedDate}
               onDateChange={handleDateChange}
               onEventClick={handleEventClick}
+              onAddEvent={handleAddEvent}
             />
           )}
         </div>
@@ -188,7 +194,7 @@ export default function Agenda() {
         <AgendaSidebar
           selectedDate={selectedDate}
           events={events}
-          onAddEvent={handleAddEvent}
+          onAddEvent={() => handleAddEvent()}
           onEventClick={handleEventClick}
         />
       </div>
@@ -198,6 +204,7 @@ export default function Agenda() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         defaultDate={selectedDate}
+        defaultHour={selectedHour}
         onEventCreated={fetchEvents}
       />
     </MainLayout>

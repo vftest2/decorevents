@@ -33,6 +33,7 @@ interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
+  defaultHour?: number;
   onEventCreated?: () => void;
 }
 
@@ -40,6 +41,7 @@ export function CreateEventDialog({
   open, 
   onOpenChange, 
   defaultDate,
+  defaultHour,
   onEventCreated 
 }: CreateEventDialogProps) {
   const { currentEntity } = useEntity();
@@ -61,8 +63,10 @@ export function CreateEventDialog({
     if (open && currentEntity?.id) {
       fetchClients();
       if (defaultDate) {
-        const formattedDate = format(defaultDate, "yyyy-MM-dd'T'10:00");
-        const formattedEndDate = format(defaultDate, "yyyy-MM-dd'T'18:00");
+        const startHour = defaultHour ?? 10;
+        const endHour = startHour + 8 > 23 ? 23 : startHour + 8;
+        const formattedDate = format(defaultDate, `yyyy-MM-dd'T'${String(startHour).padStart(2, '0')}:00`);
+        const formattedEndDate = format(defaultDate, `yyyy-MM-dd'T'${String(endHour).padStart(2, '0')}:00`);
         setFormData(prev => ({
           ...prev,
           start_date: formattedDate,
