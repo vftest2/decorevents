@@ -50,7 +50,18 @@ export function AgendaMonthView({
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const getEventsForDay = (day: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.startDate), day));
+    return events.filter((event) => {
+      const eventStart = new Date(event.startDate);
+      const eventEnd = new Date(event.endDate);
+      // Check if the day falls within the event's date range
+      const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59);
+      return eventStart <= dayEnd && eventEnd >= dayStart;
+    });
+  };
+
+  const isEventContinuation = (event: Event, day: Date) => {
+    return !isSameDay(new Date(event.startDate), day);
   };
 
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -141,10 +152,19 @@ export function AgendaMonthView({
                       'truncate rounded px-1.5 py-0.5 text-xs font-medium text-primary-foreground transition-transform hover:scale-[1.02]',
                       statusColors[event.status]
                     )}
-                    title={`${event.title} - ${format(new Date(event.startDate), 'HH:mm')} às ${format(new Date(event.endDate), 'HH:mm')}`}
+                    title={`${event.title} - ${format(new Date(event.startDate), 'HH:mm dd/MM')} às ${format(new Date(event.endDate), 'HH:mm dd/MM')}`}
                   >
-                    <span className="font-semibold">{format(new Date(event.startDate), 'HH:mm')}</span>
-                    {' '}{event.title}
+                    {isEventContinuation(event, day) ? (
+                      <>
+                        <span className="font-semibold">↳</span>
+                        {' '}{event.title} (cont.)
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">{format(new Date(event.startDate), 'HH:mm')}</span>
+                        {' '}{event.title}
+                      </>
+                    )}
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
