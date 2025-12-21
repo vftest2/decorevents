@@ -391,7 +391,10 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => navigate('/entity-users')}>
+                <Button 
+                  onClick={() => navigate('/users')}
+                  className="gradient-primary border-0 shadow-glow"
+                >
                   Ir para Gestão de Usuários
                 </Button>
               </CardContent>
