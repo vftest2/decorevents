@@ -9,6 +9,7 @@ import AdminAuth from "./pages/AdminAuth";
 import AdminEntities from "./pages/AdminEntities";
 import AdminEntityUsers from "./pages/AdminEntityUsers";
 import Dashboard from "./pages/Dashboard";
+import Agenda from "./pages/Agenda";
 import Events from "./pages/Events";
 import Inventory from "./pages/Inventory";
 import Clients from "./pages/Clients";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/admin/entities" element={<AdminEntities />} />
             <Route path="/admin/entities/:entityId/users" element={<AdminEntityUsers />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/agenda" element={<Agenda />} />
             <Route path="/events" element={<Events />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/clients" element={<Clients />} />
