@@ -73,7 +73,7 @@ export function CreateEventDialog({
     client_id: '',
     total_value: '',
     status: 'budget' as EventStatus,
-    modality: 'event' as 'event' | 'rental',
+    modality: 'event' as 'event' | 'event_rental' | 'rental_only',
   });
 
   useEffect(() => {
@@ -236,54 +236,77 @@ export function CreateEventDialog({
 
     setIsSaving(true);
     try {
-      // Create the event
-      const { data: newEvent, error } = await supabase
-        .from('events')
-        .insert({
-          entity_id: currentEntity.id,
-          title: formData.title.trim(),
-          description: formData.description.trim() || null,
-          event_type: formData.event_type || null,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          address: formData.address.trim() || null,
-          client_id: formData.client_id || null,
-          total_value: formData.total_value ? parseFloat(formData.total_value) : 0,
-          status: formData.modality === 'rental' ? 'confirmed' : formData.status,
-        })
-        .select('id')
-        .single();
+      if (formData.modality === 'rental_only') {
+        // Create only rental without event
+        const { data: newRental, error: rentalError } = await supabase
+          .from('rentals')
+          .insert({
+            entity_id: currentEntity.id,
+            title: formData.title.trim(),
+            description: formData.description.trim() || null,
+            departure_date: formData.start_date,
+            return_date: formData.end_date,
+            client_id: formData.client_id || null,
+            total_value: formData.total_value ? parseFloat(formData.total_value) : 0,
+            status: 'pending',
+          })
+          .select('id')
+          .single();
 
-      if (error) throw error;
+        if (rentalError) throw rentalError;
 
-      // Assign selected users to the event
-      if (selectedUsers.length > 0 && newEvent) {
-        const userAssignments = selectedUsers.map(userId => ({
-          event_id: newEvent.id,
-          user_id: userId,
-        }));
+        toast.success('Locação criada com sucesso!');
+      } else {
+        // Create the event
+        const { data: newEvent, error } = await supabase
+          .from('events')
+          .insert({
+            entity_id: currentEntity.id,
+            title: formData.title.trim(),
+            description: formData.description.trim() || null,
+            event_type: formData.event_type || null,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            address: formData.address.trim() || null,
+            client_id: formData.client_id || null,
+            total_value: formData.total_value ? parseFloat(formData.total_value) : 0,
+            status: formData.modality === 'event_rental' ? 'confirmed' : formData.status,
+          })
+          .select('id')
+          .single();
 
-        const { error: assignError } = await supabase
-          .from('event_assigned_users')
-          .insert(userAssignments);
+        if (error) throw error;
 
-        if (assignError) {
-          console.error('Error assigning users:', assignError);
-          toast.warning('Evento criado, mas houve erro ao atribuir usuários');
+        // Assign selected users to the event
+        if (selectedUsers.length > 0 && newEvent) {
+          const userAssignments = selectedUsers.map(userId => ({
+            event_id: newEvent.id,
+            user_id: userId,
+          }));
+
+          const { error: assignError } = await supabase
+            .from('event_assigned_users')
+            .insert(userAssignments);
+
+          if (assignError) {
+            console.error('Error assigning users:', assignError);
+            toast.warning('Evento criado, mas houve erro ao atribuir usuários');
+          }
         }
-      }
 
-      const successMessage = formData.modality === 'rental' 
-        ? 'Evento com locação criado com sucesso! A locação será gerada automaticamente.'
-        : 'Evento criado com sucesso!';
+        const successMessage = formData.modality === 'event_rental' 
+          ? 'Evento com locação criado com sucesso! A locação será gerada automaticamente.'
+          : 'Evento criado com sucesso!';
+        
+        toast.success(successMessage);
+      }
       
-      toast.success(successMessage);
       onOpenChange(false);
       resetForm();
       onEventCreated?.();
     } catch (error) {
-      console.error('Error creating event:', error);
-      toast.error('Erro ao criar evento');
+      console.error('Error creating:', error);
+      toast.error(formData.modality === 'rental_only' ? 'Erro ao criar locação' : 'Erro ao criar evento');
     } finally {
       setIsSaving(false);
     }
@@ -354,7 +377,7 @@ export function CreateEventDialog({
                 <Select
                   value={formData.status}
                   onValueChange={(value) => setFormData({ ...formData, status: value as EventStatus })}
-                  disabled={formData.modality === 'rental'}
+                  disabled={formData.modality === 'event_rental' || formData.modality === 'rental_only'}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -367,7 +390,7 @@ export function CreateEventDialog({
                     <SelectItem value="finished">Finalizado</SelectItem>
                   </SelectContent>
                 </Select>
-                {formData.modality === 'rental' && (
+                {(formData.modality === 'event_rental' || formData.modality === 'rental_only') && (
                   <p className="text-xs text-muted-foreground">
                     Status será automaticamente "Confirmado" para gerar a locação.
                   </p>
@@ -491,16 +514,16 @@ export function CreateEventDialog({
                 <div 
                   className={cn(
                     "border-2 rounded-lg p-4 cursor-pointer transition-all",
-                    formData.modality === 'rental' 
+                    formData.modality === 'event_rental' 
                       ? "border-primary bg-primary/5" 
                       : "border-border hover:border-muted-foreground"
                   )}
-                  onClick={() => setFormData({ ...formData, modality: 'rental', status: 'confirmed' })}
+                  onClick={() => setFormData({ ...formData, modality: 'event_rental', status: 'confirmed' })}
                 >
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-4 h-4 rounded-full border-2",
-                      formData.modality === 'rental' 
+                      formData.modality === 'event_rental' 
                         ? "border-primary bg-primary" 
                         : "border-muted-foreground"
                     )} />
@@ -512,14 +535,40 @@ export function CreateEventDialog({
                     </div>
                   </div>
                 </div>
+
+                <div 
+                  className={cn(
+                    "border-2 rounded-lg p-4 cursor-pointer transition-all",
+                    formData.modality === 'rental_only' 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover:border-muted-foreground"
+                  )}
+                  onClick={() => setFormData({ ...formData, modality: 'rental_only', status: 'confirmed' })}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-4 h-4 rounded-full border-2",
+                      formData.modality === 'rental_only' 
+                        ? "border-primary bg-primary" 
+                        : "border-muted-foreground"
+                    )} />
+                    <div>
+                      <h4 className="font-medium">Apenas Locação</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Cria apenas uma locação de itens, sem evento associado.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {formData.modality === 'rental' && (
+              {(formData.modality === 'event_rental' || formData.modality === 'rental_only') && (
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <p className="text-sm">
-                    <strong>Importante:</strong> Ao selecionar esta opção, o evento será criado com status 
-                    "Confirmado" e uma locação vinculada será gerada automaticamente. Você poderá 
-                    adicionar itens à locação depois na página de detalhes do evento.
+                    <strong>Importante:</strong> {formData.modality === 'event_rental' 
+                      ? 'O evento será criado com status "Confirmado" e uma locação vinculada será gerada automaticamente.'
+                      : 'Será criada apenas uma locação sem evento. Você poderá adicionar itens na página de detalhes da locação.'
+                    }
                   </p>
                 </div>
               )}
