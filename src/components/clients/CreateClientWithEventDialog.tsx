@@ -339,15 +339,17 @@ export function CreateClientWithEventDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className={cn(
         "transition-all duration-300 flex flex-col p-0",
-        showEventPanel ? "max-w-6xl h-[90vh]" : "max-w-md h-auto max-h-[90vh]"
+        showEventPanel 
+          ? "max-w-6xl h-[90vh] lg:max-w-6xl md:max-w-2xl sm:max-w-[95vw]" 
+          : "max-w-md h-auto max-h-[90vh]"
       )}>
         {/* Fixed Header */}
         <div className={cn(
-          "flex-shrink-0 px-6 pt-6 pb-4 border-b bg-background",
-          showEventPanel ? "grid grid-cols-2 gap-6" : ""
+          "flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b bg-background",
+          showEventPanel ? "flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-6" : ""
         )}>
           <div className="flex items-center justify-between">
-            <DialogTitle>Novo Cliente</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Novo Cliente</DialogTitle>
             {!showEventPanel && (
               <Button
                 type="button"
@@ -361,10 +363,10 @@ export function CreateClientWithEventDialog({
             )}
           </div>
           {showEventPanel && (
-            <div className="flex items-center justify-between border-l pl-6">
+            <div className="flex items-center justify-between lg:border-l lg:pl-6 pt-3 lg:pt-0 border-t lg:border-t-0">
               <div>
-                <h3 className="font-semibold">Novo Evento</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold text-sm sm:text-base">Novo Evento</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Preencha os dados do evento. Campos com * são obrigatórios.
                 </p>
               </div>
@@ -382,8 +384,8 @@ export function CreateClientWithEventDialog({
 
         {/* Scrollable Content */}
         <div className={cn(
-          "flex-1 overflow-y-auto px-6 py-4",
-          showEventPanel ? "grid grid-cols-2 gap-6" : ""
+          "flex-1 overflow-y-auto px-4 sm:px-6 py-4",
+          showEventPanel ? "flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:gap-6" : ""
         )}>
           {/* Client Form */}
           <div className="space-y-4">
@@ -452,7 +454,7 @@ export function CreateClientWithEventDialog({
 
           {/* Event Form */}
           {showEventPanel && (
-            <div className="border-l pl-6 space-y-4">
+            <div className="lg:border-l lg:pl-6 space-y-4 pt-4 lg:pt-0 border-t lg:border-t-0">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="info" className="flex items-center gap-1 text-xs">
