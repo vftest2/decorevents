@@ -1,19 +1,17 @@
-import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Package, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Calendar,
+  Package,
+  Users,
+  Settings,
   Truck,
   BarChart3,
   ChevronLeft,
   ChevronRight,
   PartyPopper,
   LogOut,
-  UserCog,
-  ClipboardList
+  ClipboardList,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -33,8 +31,12 @@ const menuItems = [
 
 const bottomMenuItem = { icon: Settings, label: 'Configurações', path: '/settings' };
 
-export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+interface SidebarProps {
+  isCollapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
+}
+
+export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentEntity, currentUser } = useEntity();
@@ -58,9 +60,10 @@ export function Sidebar() {
           size="icon"
           className={cn(
             "absolute top-4 h-6 w-6 rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md hover:bg-sidebar-accent z-50 transition-all duration-300",
-            isCollapsed ? "-right-3" : "-right-3"
+            "-right-3"
           )}
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => onCollapsedChange(!isCollapsed)}
+          aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
         >
           {isCollapsed ? (
             <ChevronRight className="h-3 w-3" />
