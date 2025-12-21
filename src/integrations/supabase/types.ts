@@ -386,6 +386,157 @@ export type Database = {
           },
         ]
       }
+      item_damages: {
+        Row: {
+          created_at: string | null
+          description: string
+          entity_id: string
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          photos: string[] | null
+          quantity: number | null
+          registered_by: string | null
+          rental_id: string | null
+          rental_item_id: string | null
+          repair_cost: number | null
+          resolved_at: string | null
+          severity: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          entity_id: string
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          photos?: string[] | null
+          quantity?: number | null
+          registered_by?: string | null
+          rental_id?: string | null
+          rental_item_id?: string | null
+          repair_cost?: number | null
+          resolved_at?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          entity_id?: string
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          photos?: string[] | null
+          quantity?: number | null
+          registered_by?: string | null
+          rental_id?: string | null
+          rental_item_id?: string | null
+          repair_cost?: number | null
+          resolved_at?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_damages_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_damages_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_damages_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_damages_rental_item_id_fkey"
+            columns: ["rental_item_id"]
+            isOneToOne: false
+            referencedRelation: "rental_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_history: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          entity_id: string
+          event_id: string | null
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          quantity: number | null
+          rental_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          entity_id: string
+          event_id?: string | null
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          quantity?: number | null
+          rental_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          entity_id?: string
+          event_id?: string | null
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          quantity?: number | null
+          rental_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_history_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_history_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_history_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar: string | null
@@ -426,6 +577,142 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_items: {
+        Row: {
+          checked_in: boolean | null
+          checked_out: boolean | null
+          created_at: string | null
+          damaged_quantity: number | null
+          id: string
+          inventory_item_id: string
+          lost_quantity: number | null
+          notes: string | null
+          quantity: number
+          rental_id: string
+          returned_quantity: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          checked_in?: boolean | null
+          checked_out?: boolean | null
+          created_at?: string | null
+          damaged_quantity?: number | null
+          id?: string
+          inventory_item_id: string
+          lost_quantity?: number | null
+          notes?: string | null
+          quantity?: number
+          rental_id: string
+          returned_quantity?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          checked_in?: boolean | null
+          checked_out?: boolean | null
+          created_at?: string | null
+          damaged_quantity?: number | null
+          id?: string
+          inventory_item_id?: string
+          lost_quantity?: number | null
+          notes?: string | null
+          quantity?: number
+          rental_id?: string
+          returned_quantity?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_items_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rentals: {
+        Row: {
+          actual_departure_date: string | null
+          actual_return_date: string | null
+          client_id: string | null
+          created_at: string | null
+          departure_date: string | null
+          description: string | null
+          entity_id: string
+          event_id: string | null
+          id: string
+          notes: string | null
+          return_date: string | null
+          status: string
+          title: string
+          total_value: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_departure_date?: string | null
+          actual_return_date?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          departure_date?: string | null
+          description?: string | null
+          entity_id: string
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          return_date?: string | null
+          status?: string
+          title: string
+          total_value?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_departure_date?: string | null
+          actual_return_date?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          departure_date?: string | null
+          description?: string | null
+          entity_id?: string
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          return_date?: string | null
+          status?: string
+          title?: string
+          total_value?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
