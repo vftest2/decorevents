@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Phone, Mail, MapPin, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Search, Phone, Mail, MapPin, Pencil, Trash2, MoreVertical, CalendarPlus } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEntity } from '@/contexts/EntityContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ClientEventDrawer } from '@/components/clients/ClientEventDrawer';
 
 interface Client {
   id: string;
@@ -47,6 +48,9 @@ export default function Clients() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<'client' | 'event' | 'client_event'>('client');
+  const [selectedClientForEvent, setSelectedClientForEvent] = useState<{ id: string; name: string } | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({
     name: '',
     email: '',
@@ -88,6 +92,18 @@ export default function Clients() {
   const openCreateDialog = () => {
     resetForm();
     setIsDialogOpen(true);
+  };
+
+  const openClientEventDrawer = () => {
+    setDrawerMode('client_event');
+    setSelectedClientForEvent(null);
+    setDrawerOpen(true);
+  };
+
+  const openEventDrawerForClient = (client: Client) => {
+    setDrawerMode('event');
+    setSelectedClientForEvent({ id: client.id, name: client.name });
+    setDrawerOpen(true);
   };
 
   const openEditDialog = (client: Client) => {
@@ -190,7 +206,12 @@ export default function Clients() {
         showAddButton
         addButtonLabel="Novo Cliente"
         onAddClick={openCreateDialog}
-      />
+      >
+        <Button onClick={openClientEventDrawer} variant="outline" className="flex items-center gap-2">
+          <CalendarPlus className="h-4 w-4" />
+          <span className="hidden sm:inline">Cliente + Evento</span>
+        </Button>
+      </Header>
 
       <div className="p-6 space-y-6">
         {/* Search */}
@@ -243,6 +264,10 @@ export default function Clients() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEventDrawerForClient(client)}>
+                            <CalendarPlus className="h-4 w-4 mr-2" />
+                            Adicionar Evento
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(client)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar
@@ -379,6 +404,15 @@ export default function Clients() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Client + Event Drawer */}
+      <ClientEventDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        mode={drawerMode}
+        preselectedClient={selectedClientForEvent}
+        onSuccess={fetchClients}
+      />
     </MainLayout>
   );
 }
