@@ -338,34 +338,57 @@ export function CreateClientWithEventDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className={cn(
-        "transition-all duration-300 max-h-[95vh] overflow-y-auto",
-        showEventPanel ? "max-w-6xl min-h-[80vh]" : "max-w-md"
+        "transition-all duration-300 flex flex-col p-0",
+        showEventPanel ? "max-w-6xl h-[90vh]" : "max-w-md h-auto max-h-[90vh]"
       )}>
-        <DialogHeader className="flex flex-row items-start justify-between">
-          <DialogTitle>Novo Cliente</DialogTitle>
-        </DialogHeader>
-
+        {/* Fixed Header */}
         <div className={cn(
-          "grid gap-6 transition-all duration-300",
-          showEventPanel ? "grid-cols-2" : "grid-cols-1"
+          "flex-shrink-0 px-6 pt-6 pb-4 border-b bg-background",
+          showEventPanel ? "grid grid-cols-2 gap-6" : ""
+        )}>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Novo Cliente</DialogTitle>
+            {!showEventPanel && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowEventPanel(true)}
+                className="gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                evento
+              </Button>
+            )}
+          </div>
+          {showEventPanel && (
+            <div className="flex items-center justify-between border-l pl-6">
+              <div>
+                <h3 className="font-semibold">Novo Evento</h3>
+                <p className="text-sm text-muted-foreground">
+                  Preencha os dados do evento. Campos com * são obrigatórios.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEventPanel(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable Content */}
+        <div className={cn(
+          "flex-1 overflow-y-auto px-6 py-4",
+          showEventPanel ? "grid grid-cols-2 gap-6" : ""
         )}>
           {/* Client Form */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="client-name">Nome *</Label>
-                {!showEventPanel && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => setShowEventPanel(true)}
-                    className="gap-1"
-                  >
-                    <Plus className="h-3 w-3" />
-                    evento
-                  </Button>
-                )}
-              </div>
+              <Label htmlFor="client-name">Nome *</Label>
               <Input
                 id="client-name"
                 value={clientData.name}
@@ -430,23 +453,6 @@ export function CreateClientWithEventDialog({
           {/* Event Form */}
           {showEventPanel && (
             <div className="border-l pl-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Novo Evento</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Preencha os dados do evento. Campos com * são obrigatórios.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowEventPanel(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="info" className="flex items-center gap-1 text-xs">
@@ -716,7 +722,8 @@ export function CreateClientWithEventDialog({
           )}
         </div>
 
-        <DialogFooter className="flex justify-between mt-6 pt-4 border-t">
+        {/* Fixed Footer */}
+        <DialogFooter className="flex-shrink-0 flex justify-between px-6 py-4 border-t bg-background">
           <Button variant="outline" onClick={handleClose}>
             Cancelar
           </Button>
