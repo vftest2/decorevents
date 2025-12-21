@@ -12,6 +12,7 @@ interface EntityContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   logout: () => Promise<void>;
+  refreshEntity: () => Promise<void>;
 }
 
 const EntityContext = createContext<EntityContextType | undefined>(undefined);
@@ -143,6 +144,35 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  const refreshEntity = async () => {
+    if (!currentUser?.entityId) return;
+    
+    try {
+      const { data: entity, error } = await supabase
+        .from('entities')
+        .select('*')
+        .eq('id', currentUser.entityId)
+        .single();
+
+      if (!error && entity) {
+        setCurrentEntity({
+          id: entity.id,
+          name: entity.name,
+          slug: entity.slug,
+          logo: entity.logo || undefined,
+          primaryColor: entity.primary_color || '#E85A4F',
+          secondaryColor: entity.secondary_color || '#F5F0EB',
+          accentColor: entity.accent_color || '#E8A83C',
+          theme: (entity.theme as 'light' | 'dark' | 'auto') || 'light',
+          createdAt: new Date(entity.created_at || ''),
+          isActive: entity.is_active || true,
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing entity:', error);
+    }
+  };
+
   return (
     <EntityContext.Provider
       value={{
@@ -154,6 +184,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isLoading,
         logout,
+        refreshEntity,
       }}
     >
       {children}
