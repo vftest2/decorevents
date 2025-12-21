@@ -56,6 +56,28 @@ function getLighterHSL(hsl: { h: number; s: number; l: number }): string {
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
   const { currentEntity } = useEntity();
 
+  // Apply theme (light/dark) to document
+  useEffect(() => {
+    if (!currentEntity?.theme) return;
+    
+    const root = document.documentElement;
+    
+    if (currentEntity.theme === 'dark') {
+      root.classList.add('dark');
+    } else if (currentEntity.theme === 'light') {
+      root.classList.remove('dark');
+    } else if (currentEntity.theme === 'auto') {
+      // Check system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    }
+  }, [currentEntity?.theme]);
+
+  // Apply colors
   useEffect(() => {
     if (!currentEntity) return;
 
@@ -65,6 +87,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const primaryColor = currentEntity.primaryColor || '#E85A4F';
     const secondaryColor = currentEntity.secondaryColor || '#F5F0EB';
     const accentColor = currentEntity.accentColor || '#E8A83C';
+    const sidebarColor = currentEntity.sidebarColor || null;
 
     // Convert to HSL
     const primaryHSL = hexToHSL(primaryColor);
@@ -82,11 +105,25 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     // Apply ring color (matches primary)
     root.style.setProperty('--ring', `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
 
-    // Sidebar colors
-    root.style.setProperty('--sidebar-primary', `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
-    root.style.setProperty('--sidebar-primary-foreground', primaryHSL.l > 50 ? '0 0% 10%' : '0 0% 98%');
-    root.style.setProperty('--sidebar-accent', getLighterHSL(primaryHSL));
-    root.style.setProperty('--sidebar-accent-foreground', getDarkerHSL(primaryHSL));
+    // Sidebar colors - use custom sidebar color if set, otherwise derive from primary
+    if (sidebarColor) {
+      const sidebarHSL = hexToHSL(sidebarColor);
+      root.style.setProperty('--sidebar-background', `${sidebarHSL.h} ${sidebarHSL.s}% ${sidebarHSL.l}%`);
+      root.style.setProperty('--sidebar-foreground', sidebarHSL.l > 50 ? '20 20% 15%' : '30 20% 90%');
+      root.style.setProperty('--sidebar-primary', `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
+      root.style.setProperty('--sidebar-primary-foreground', primaryHSL.l > 50 ? '0 0% 10%' : '0 0% 98%');
+      root.style.setProperty('--sidebar-accent', sidebarHSL.l > 50 ? getDarkerHSL(sidebarHSL) : getLighterHSL(sidebarHSL));
+      root.style.setProperty('--sidebar-accent-foreground', sidebarHSL.l > 50 ? '0 0% 10%' : '0 0% 95%');
+      root.style.setProperty('--sidebar-border', sidebarHSL.l > 50 ? `${sidebarHSL.h} ${sidebarHSL.s}% ${Math.max(sidebarHSL.l - 15, 0)}%` : `${sidebarHSL.h} 20% 20%`);
+    } else {
+      // Default sidebar colors based on primary
+      root.style.setProperty('--sidebar-background', '20 25% 12%');
+      root.style.setProperty('--sidebar-foreground', '30 20% 90%');
+      root.style.setProperty('--sidebar-primary', `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
+      root.style.setProperty('--sidebar-primary-foreground', primaryHSL.l > 50 ? '0 0% 10%' : '0 0% 98%');
+      root.style.setProperty('--sidebar-accent', getLighterHSL(primaryHSL));
+      root.style.setProperty('--sidebar-accent-foreground', getDarkerHSL(primaryHSL));
+    }
 
     // Chart colors based on branding
     root.style.setProperty('--chart-1', `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
@@ -97,8 +134,27 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
     // Update CSS custom properties for gradients and glows
     root.style.setProperty('--primary-glow', `${primaryHSL.h} ${Math.min(primaryHSL.s + 10, 100)}% ${Math.min(primaryHSL.l + 10, 70)}%`);
+    root.style.setProperty('--shadow-glow', `0 0 20px hsl(${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}% / 0.3)`);
 
-  }, [currentEntity?.primaryColor, currentEntity?.secondaryColor, currentEntity?.accentColor]);
+  }, [currentEntity?.primaryColor, currentEntity?.secondaryColor, currentEntity?.accentColor, currentEntity?.sidebarColor]);
+
+  // Listen for system theme changes when auto mode
+  useEffect(() => {
+    if (currentEntity?.theme !== 'auto') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const root = document.documentElement;
+      if (e.matches) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [currentEntity?.theme]);
 
   return <>{children}</>;
 }

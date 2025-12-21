@@ -7,6 +7,7 @@ export interface Entity {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  sidebarColor?: string;
   theme: 'light' | 'dark' | 'auto';
   createdAt: Date;
   isActive: boolean;
