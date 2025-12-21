@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PartyPopper,
-  LogOut
+  LogOut,
+  UserCog
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const menuItems = [
   { icon: Calendar, label: 'Agenda', path: '/agenda' },
   { icon: Package, label: 'Estoque', path: '/inventory' },
   { icon: Users, label: 'Clientes', path: '/clients' },
+  { icon: UserCog, label: 'Usuários', path: '/users' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
   { icon: BarChart3, label: 'Relatórios', path: '/reports' },
   { icon: Settings, label: 'Configurações', path: '/settings' },

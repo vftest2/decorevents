@@ -13,6 +13,7 @@ import Agenda from "./pages/Agenda";
 import Events from "./pages/Events";
 import Inventory from "./pages/Inventory";
 import Clients from "./pages/Clients";
+import EntityUsers from "./pages/EntityUsers";
 import Logistics from "./pages/Logistics";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/users" element={<EntityUsers />} />
             <Route path="/logistics" element={<Logistics />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />

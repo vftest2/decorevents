@@ -7,6 +7,7 @@ import { AgendaWeekView } from '@/components/agenda/AgendaWeekView';
 import { AgendaDayView } from '@/components/agenda/AgendaDayView';
 import { AgendaSidebar } from '@/components/agenda/AgendaSidebar';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
+import { EventDetailsDialog } from '@/components/events/EventDetailsDialog';
 import { useEntity } from '@/contexts/EntityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Event, EventStatus } from '@/types';
@@ -26,6 +27,8 @@ export default function Agenda() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number | undefined>(undefined);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (currentEntity?.id) {
@@ -107,8 +110,8 @@ export default function Agenda() {
   };
 
   const handleEventClick = (event: Event) => {
-    // TODO: Open event details modal
-    console.log('Event clicked:', event);
+    setSelectedEvent(event);
+    setIsDetailsDialogOpen(true);
   };
 
   const handleAddEvent = (date?: Date, hour?: number) => {
@@ -207,6 +210,14 @@ export default function Agenda() {
         defaultDate={selectedDate}
         defaultHour={selectedHour}
         onEventCreated={fetchEvents}
+      />
+
+      {/* Event Details Dialog */}
+      <EventDetailsDialog
+        event={selectedEvent}
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        onEventDeleted={fetchEvents}
       />
     </MainLayout>
   );
