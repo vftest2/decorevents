@@ -95,7 +95,7 @@ export function AgendaWeekView({
           return (
             <div
               key={day.toISOString()}
-              onClick={() => onDayClick(day)}
+              onDoubleClick={() => onDayClick(day)}
               className={cn(
                 'py-3 text-center cursor-pointer hover:bg-muted/50 transition-colors',
                 isSelected && 'bg-primary/10'
@@ -133,7 +133,7 @@ export function AgendaWeekView({
               return (
                 <div
                   key={`${day.toISOString()}-${hour.toISOString()}`}
-                  onClick={() => onDayClick(day)}
+                  onDoubleClick={() => onDayClick(day)}
                   className={cn(
                     'min-h-[48px] p-1 border-r border-border last:border-r-0 cursor-pointer hover:bg-muted/30 transition-colors',
                     isSelected && 'bg-primary/5'
