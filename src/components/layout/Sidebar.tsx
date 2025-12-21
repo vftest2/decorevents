@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Calendar, label: 'Eventos', path: '/events' },
+  { icon: Calendar, label: 'Agenda', path: '/agenda' },
   { icon: Package, label: 'Estoque', path: '/inventory' },
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
