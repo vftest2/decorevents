@@ -7,7 +7,8 @@ import {
   Shield, 
   Upload,
   Check,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
@@ -21,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { CategoryManager } from '@/components/settings/CategoryManager';
 
 const themeOptions = [
   { id: 'light', label: 'Claro', icon: '☀️' },
@@ -139,10 +141,14 @@ export default function Settings() {
 
       <div className="p-6">
         <Tabs defaultValue="branding" className="space-y-6">
-          <TabsList className="bg-secondary/50 p-1">
+          <TabsList className="bg-secondary/50 p-1 flex-wrap h-auto">
             <TabsTrigger value="branding" className="gap-2">
               <Palette className="h-4 w-4" />
               <span className="hidden sm:inline">Branding</span>
+            </TabsTrigger>
+            <TabsTrigger value="personalization" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Personalização</span>
             </TabsTrigger>
             <TabsTrigger value="entity" className="gap-2">
               <Building2 className="h-4 w-4" />
@@ -327,6 +333,11 @@ export default function Settings() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Personalization Tab */}
+          <TabsContent value="personalization" className="space-y-6 animate-fade-in">
+            <CategoryManager />
           </TabsContent>
 
           {/* Entity Tab */}
