@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { Bell, Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ interface HeaderProps {
   showAddButton?: boolean;
   addButtonLabel?: string;
   onAddClick?: () => void;
+  children?: ReactNode;
 }
 
 export function Header({ 
@@ -16,7 +18,8 @@ export function Header({
   subtitle, 
   showAddButton = false, 
   addButtonLabel = 'Novo',
-  onAddClick 
+  onAddClick,
+  children
 }: HeaderProps) {
   const { currentEntity } = useEntity();
 
@@ -61,6 +64,9 @@ export function Header({
             <span className="hidden sm:inline">{addButtonLabel}</span>
           </Button>
         )}
+
+        {/* Custom children */}
+        {children}
       </div>
     </header>
   );

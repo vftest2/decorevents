@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PartyPopper,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEntity } from '@/contexts/EntityContext';
@@ -25,6 +26,7 @@ const menuItems = [
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
   { icon: BarChart3, label: 'Relatórios', path: '/reports' },
+  { icon: Building2, label: 'Entidades', path: '/entities', superAdminOnly: true },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
 
