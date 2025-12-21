@@ -357,6 +357,10 @@ export default function AdminEntities() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => navigate(`/admin/entities/${entity.id}/users`)}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Usuários
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openEditDialog(entity)}>
                         <Edit2 className="h-4 w-4 mr-2" />
                         Editar
