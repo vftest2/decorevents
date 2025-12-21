@@ -109,7 +109,7 @@ export function AgendaMonthView({
           return (
             <div
               key={day.toISOString()}
-              onClick={() => onDayClick(day)}
+              onDoubleClick={() => onDayClick(day)}
               className={cn(
                 'min-h-[100px] p-2 border-r border-b border-border cursor-pointer transition-colors hover:bg-muted/50',
                 !isCurrentMonth && 'bg-muted/20',
