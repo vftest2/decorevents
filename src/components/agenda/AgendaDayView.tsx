@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Event, EventStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -10,20 +10,22 @@ import {
   subDays,
   addMonths,
   subMonths,
-  isToday,
   eachHourOfInterval,
   setHours,
-  getHours
+  getHours,
+  differenceInHours
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const statusColors: Record<EventStatus, string> = {
-  budget: 'bg-muted-foreground/60',
-  confirmed: 'bg-success',
-  in_assembly: 'bg-info',
-  in_transit: 'bg-warning',
-  finished: 'bg-secondary-foreground/30',
+const statusColors: Record<EventStatus, { bg: string; border: string }> = {
+  budget: { bg: 'bg-muted-foreground/10', border: 'border-l-muted-foreground' },
+  confirmed: { bg: 'bg-success/10', border: 'border-l-success' },
+  in_assembly: { bg: 'bg-info/10', border: 'border-l-info' },
+  in_transit: { bg: 'bg-warning/10', border: 'border-l-warning' },
+  finished: { bg: 'bg-secondary-foreground/10', border: 'border-l-secondary-foreground/50' },
 };
+
+const HOUR_HEIGHT = 48; // Height of each hour row in pixels
 
 interface AgendaDayViewProps {
   events: Event[];
@@ -42,22 +44,47 @@ export function AgendaDayView({
 }: AgendaDayViewProps) {
   const [hoveredHour, setHoveredHour] = useState<number | null>(null);
   
+  const startHour = 6;
+  const endHour = 21;
+  
   const hours = eachHourOfInterval({
-    start: setHours(selectedDate, 6),
-    end: setHours(selectedDate, 21)
+    start: setHours(selectedDate, startHour),
+    end: setHours(selectedDate, endHour)
   });
 
   const dayEvents = events.filter((event) => isSameDay(new Date(event.startDate), selectedDate));
 
-  const getEventsForHour = (hour: Date) => {
-    return dayEvents.filter(event => {
-      const eventHour = getHours(new Date(event.startDate));
-      return eventHour === getHours(hour);
+  // Check if a specific hour is occupied by any event (for spanning events)
+  const isHourOccupied = (hourValue: number) => {
+    return dayEvents.some(event => {
+      const eventStartHour = getHours(new Date(event.startDate));
+      const eventEndHour = getHours(new Date(event.endDate));
+      return hourValue >= eventStartHour && hourValue < eventEndHour;
+    });
+  };
+
+  // Get event that starts at this hour
+  const getEventStartingAtHour = (hourValue: number) => {
+    return dayEvents.find(event => {
+      const eventStartHour = getHours(new Date(event.startDate));
+      return eventStartHour === hourValue;
+    });
+  };
+
+  // Check if this hour is part of an event's span (but not the start)
+  const isHourPartOfEventSpan = (hourValue: number) => {
+    return dayEvents.some(event => {
+      const eventStartHour = getHours(new Date(event.startDate));
+      const eventEndHour = getHours(new Date(event.endDate));
+      return hourValue > eventStartHour && hourValue < eventEndHour;
     });
   };
 
   const handleHourClick = (hour: Date) => {
-    onAddEvent?.(selectedDate, getHours(hour));
+    const hourValue = getHours(hour);
+    if (!isHourOccupied(hourValue)) {
+      onAddEvent?.(selectedDate, hourValue);
+    }
   };
 
   return (
@@ -65,7 +92,7 @@ export function AgendaDayView({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className="text-lg font-semibold text-foreground capitalize">
             {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
           </h2>
           <div className="flex items-center">
@@ -124,16 +151,24 @@ export function AgendaDayView({
       </div>
 
       {/* Time grid */}
-      <div className="max-h-[calc(100vh-350px)] overflow-y-auto">
+      <div className="max-h-[calc(100vh-350px)] overflow-y-auto relative">
         {hours.map((hour) => {
-          const hourEvents = getEventsForHour(hour);
           const hourValue = getHours(hour);
           const isHovered = hoveredHour === hourValue;
+          const eventAtHour = getEventStartingAtHour(hourValue);
+          const isPartOfSpan = isHourPartOfEventSpan(hourValue);
+          const occupied = isHourOccupied(hourValue);
+          
+          // Calculate event duration in hours for spanning
+          const eventDuration = eventAtHour 
+            ? Math.max(1, differenceInHours(new Date(eventAtHour.endDate), new Date(eventAtHour.startDate)))
+            : 0;
           
           return (
             <div 
               key={hour.toISOString()} 
               className="flex border-b border-border last:border-b-0 group"
+              style={{ minHeight: HOUR_HEIGHT }}
               onMouseEnter={() => setHoveredHour(hourValue)}
               onMouseLeave={() => setHoveredHour(null)}
             >
@@ -142,40 +177,47 @@ export function AgendaDayView({
               </div>
               <div 
                 className={cn(
-                  'flex-1 min-h-[48px] border-l border-border relative cursor-pointer transition-colors',
-                  hourEvents.length === 0 && 'hover:bg-muted/30'
+                  'flex-1 border-l border-border relative transition-colors',
+                  !occupied && 'cursor-pointer hover:bg-muted/30',
+                  isPartOfSpan && 'bg-muted/10'
                 )}
-                onClick={() => hourEvents.length === 0 && handleHourClick(hour)}
+                onClick={() => handleHourClick(hour)}
               >
-                {hourEvents.length > 0 ? (
-                  <div className="p-1.5">
-                    {hourEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEventClick?.(event);
-                        }}
-                        className={cn(
-                          'rounded-lg px-3 py-2 mb-1 last:mb-0 cursor-pointer transition-transform hover:scale-[1.01]',
-                          statusColors[event.status]
-                        )}
-                      >
-                        <div className="text-sm font-medium text-primary-foreground">
-                          {event.title}
-                        </div>
-                        <div className="text-xs text-primary-foreground/80 mt-0.5">
-                          {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
-                        </div>
-                        {event.client && (
-                          <div className="text-xs text-primary-foreground/70 mt-0.5">
-                            {event.client.name}
-                          </div>
-                        )}
+                {eventAtHour && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick?.(eventAtHour);
+                    }}
+                    className={cn(
+                      'absolute left-0 right-0 mx-1 rounded-lg border-l-4 cursor-pointer transition-shadow hover:shadow-md z-10',
+                      statusColors[eventAtHour.status].bg,
+                      statusColors[eventAtHour.status].border
+                    )}
+                    style={{
+                      top: 2,
+                      height: eventDuration * HOUR_HEIGHT - 4,
+                    }}
+                  >
+                    <div className="p-2">
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <span className="text-base">🎉</span>
+                        {eventAtHour.title}
                       </div>
-                    ))}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(eventAtHour.startDate), 'HH:mm')} - {format(new Date(eventAtHour.endDate), 'HH:mm')}
+                      </div>
+                      {eventAtHour.client && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {eventAtHour.client.name}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
+                )}
+                
+                {!occupied && (
                   <div className={cn(
                     'absolute inset-0 flex items-center justify-center transition-opacity',
                     isHovered ? 'opacity-100' : 'opacity-0'
