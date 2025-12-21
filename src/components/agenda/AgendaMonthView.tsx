@@ -141,9 +141,10 @@ export function AgendaMonthView({
                       'truncate rounded px-1.5 py-0.5 text-xs font-medium text-primary-foreground transition-transform hover:scale-[1.02]',
                       statusColors[event.status]
                     )}
-                    title={event.title}
+                    title={`${event.title} - ${format(new Date(event.startDate), 'HH:mm')} às ${format(new Date(event.endDate), 'HH:mm')}`}
                   >
-                    {event.title}
+                    <span className="font-semibold">{format(new Date(event.startDate), 'HH:mm')}</span>
+                    {' '}{event.title}
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
