@@ -13,7 +13,12 @@ import {
   eachHourOfInterval,
   setHours,
   getHours,
-  differenceInHours
+  startOfDay,
+  endOfDay,
+  isWithinInterval,
+  isBefore,
+  isAfter,
+  differenceInMinutes
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,7 +30,7 @@ const statusColors: Record<EventStatus, { bg: string; border: string }> = {
   finished: { bg: 'bg-secondary-foreground/10', border: 'border-l-secondary-foreground/50' },
 };
 
-const HOUR_HEIGHT = 48; // Height of each hour row in pixels
+const HOUR_HEIGHT = 40; // Height of each hour row in pixels
 
 interface AgendaDayViewProps {
   events: Event[];
@@ -44,44 +49,92 @@ export function AgendaDayView({
 }: AgendaDayViewProps) {
   const [hoveredHour, setHoveredHour] = useState<number | null>(null);
   
-  const startHour = 6;
-  const endHour = 21;
-  
+  // Full 24 hours (00:00 to 23:00)
   const hours = eachHourOfInterval({
-    start: setHours(selectedDate, startHour),
-    end: setHours(selectedDate, endHour)
+    start: setHours(startOfDay(selectedDate), 0),
+    end: setHours(startOfDay(selectedDate), 23)
   });
 
-  const dayEvents = events.filter((event) => isSameDay(new Date(event.startDate), selectedDate));
+  const dayStart = startOfDay(selectedDate);
+  const dayEnd = endOfDay(selectedDate);
 
-  // Check if a specific hour is occupied by any event (for spanning events)
+  // Get all events that occur on this day (including multi-day events)
+  const dayEvents = events.filter((event) => {
+    const eventStart = new Date(event.startDate);
+    const eventEnd = new Date(event.endDate);
+    
+    // Event starts on this day
+    if (isSameDay(eventStart, selectedDate)) return true;
+    
+    // Event ends on this day
+    if (isSameDay(eventEnd, selectedDate)) return true;
+    
+    // Event spans across this day (starts before, ends after)
+    if (isBefore(eventStart, dayStart) && isAfter(eventEnd, dayEnd)) return true;
+    
+    // Event is within this day's range
+    return isWithinInterval(dayStart, { start: eventStart, end: eventEnd }) ||
+           isWithinInterval(dayEnd, { start: eventStart, end: eventEnd });
+  });
+
+  // Get the effective start hour for an event on this day
+  const getEffectiveStartHour = (event: Event): number => {
+    const eventStart = new Date(event.startDate);
+    if (isSameDay(eventStart, selectedDate)) {
+      return getHours(eventStart);
+    }
+    // Event started on a previous day, so it starts at 00:00 on this day
+    return 0;
+  };
+
+  // Get the effective end hour for an event on this day
+  const getEffectiveEndHour = (event: Event): number => {
+    const eventEnd = new Date(event.endDate);
+    if (isSameDay(eventEnd, selectedDate)) {
+      return getHours(eventEnd);
+    }
+    // Event ends on a future day, so it ends at 23:59 on this day
+    return 24;
+  };
+
+  // Check if a specific hour is occupied by any event
   const isHourOccupied = (hourValue: number) => {
     return dayEvents.some(event => {
-      const eventStartHour = getHours(new Date(event.startDate));
-      const eventEndHour = getHours(new Date(event.endDate));
-      return hourValue >= eventStartHour && hourValue < eventEndHour;
+      const startHour = getEffectiveStartHour(event);
+      const endHour = getEffectiveEndHour(event);
+      return hourValue >= startHour && hourValue < endHour;
     });
   };
 
-  // Get event that starts at this hour
-  const getEventStartingAtHour = (hourValue: number) => {
+  // Get event that starts at this hour (or continues from previous day at hour 0)
+  const getEventStartingAtHour = (hourValue: number): Event | undefined => {
     return dayEvents.find(event => {
-      const eventStartHour = getHours(new Date(event.startDate));
-      return eventStartHour === hourValue;
+      const effectiveStart = getEffectiveStartHour(event);
+      return effectiveStart === hourValue;
     });
   };
 
-  // Check if this hour is part of an event's span (but not the start)
-  const isHourPartOfEventSpan = (hourValue: number) => {
-    return dayEvents.some(event => {
-      const eventStartHour = getHours(new Date(event.startDate));
-      const eventEndHour = getHours(new Date(event.endDate));
-      return hourValue > eventStartHour && hourValue < eventEndHour;
-    });
+  // Calculate the height of an event block in pixels
+  const getEventHeight = (event: Event): number => {
+    const startHour = getEffectiveStartHour(event);
+    const endHour = getEffectiveEndHour(event);
+    const duration = endHour - startHour;
+    return Math.max(1, duration) * HOUR_HEIGHT - 4;
   };
 
-  const handleHourClick = (hour: Date) => {
-    const hourValue = getHours(hour);
+  // Check if event is a continuation from previous day
+  const isContinuationFromPreviousDay = (event: Event): boolean => {
+    const eventStart = new Date(event.startDate);
+    return isBefore(eventStart, dayStart);
+  };
+
+  // Check if event continues to next day
+  const continuesNextDay = (event: Event): boolean => {
+    const eventEnd = new Date(event.endDate);
+    return isAfter(eventEnd, dayEnd);
+  };
+
+  const handleHourClick = (hourValue: number) => {
     if (!isHourOccupied(hourValue)) {
       onAddEvent?.(selectedDate, hourValue);
     }
@@ -156,13 +209,7 @@ export function AgendaDayView({
           const hourValue = getHours(hour);
           const isHovered = hoveredHour === hourValue;
           const eventAtHour = getEventStartingAtHour(hourValue);
-          const isPartOfSpan = isHourPartOfEventSpan(hourValue);
           const occupied = isHourOccupied(hourValue);
-          
-          // Calculate event duration in hours for spanning
-          const eventDuration = eventAtHour 
-            ? Math.max(1, differenceInHours(new Date(eventAtHour.endDate), new Date(eventAtHour.startDate)))
-            : 0;
           
           return (
             <div 
@@ -172,16 +219,15 @@ export function AgendaDayView({
               onMouseEnter={() => setHoveredHour(hourValue)}
               onMouseLeave={() => setHoveredHour(null)}
             >
-              <div className="w-16 py-3 px-3 text-xs text-muted-foreground flex-shrink-0 text-right">
+              <div className="w-16 py-2 px-3 text-xs text-muted-foreground flex-shrink-0 text-right">
                 {format(hour, 'HH:mm')}
               </div>
               <div 
                 className={cn(
                   'flex-1 border-l border-border relative transition-colors',
-                  !occupied && 'cursor-pointer hover:bg-muted/30',
-                  isPartOfSpan && 'bg-muted/10'
+                  !occupied && 'cursor-pointer hover:bg-muted/30'
                 )}
-                onClick={() => handleHourClick(hour)}
+                onClick={() => handleHourClick(hourValue)}
               >
                 {eventAtHour && (
                   <div
@@ -192,21 +238,28 @@ export function AgendaDayView({
                     className={cn(
                       'absolute left-0 right-0 mx-1 rounded-lg border-l-4 cursor-pointer transition-shadow hover:shadow-md z-10',
                       statusColors[eventAtHour.status].bg,
-                      statusColors[eventAtHour.status].border
+                      statusColors[eventAtHour.status].border,
+                      isContinuationFromPreviousDay(eventAtHour) && 'rounded-t-none',
+                      continuesNextDay(eventAtHour) && 'rounded-b-none'
                     )}
                     style={{
                       top: 2,
-                      height: eventDuration * HOUR_HEIGHT - 4,
+                      height: getEventHeight(eventAtHour),
                     }}
                   >
                     <div className="p-2">
                       <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                         <span className="text-base">🎉</span>
                         {eventAtHour.title}
+                        {(isContinuationFromPreviousDay(eventAtHour) || continuesNextDay(eventAtHour)) && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            {isContinuationFromPreviousDay(eventAtHour) && '(cont.)'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(eventAtHour.startDate), 'HH:mm')} - {format(new Date(eventAtHour.endDate), 'HH:mm')}
+                        {format(new Date(eventAtHour.startDate), "dd/MM HH:mm")} - {format(new Date(eventAtHour.endDate), "dd/MM HH:mm")}
                       </div>
                       {eventAtHour.client && (
                         <div className="text-xs text-muted-foreground mt-0.5">
