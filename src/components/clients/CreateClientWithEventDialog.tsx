@@ -716,7 +716,7 @@ export function CreateClientWithEventDialog({
           )}
         </div>
 
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex justify-between mt-6 pt-4 border-t">
           <Button variant="outline" onClick={handleClose}>
             Cancelar
           </Button>
