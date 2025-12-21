@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { CategoryManager } from '@/components/settings/CategoryManager';
+import { UserManager } from '@/components/settings/UserManager';
 
 const themeOptions = [
   { id: 'light', label: 'Claro', icon: '☀️' },
@@ -383,22 +384,7 @@ export default function Settings() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="animate-fade-in">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciar Usuários</CardTitle>
-                <CardDescription>
-                  Adicione e gerencie usuários da sua entidade
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={() => navigate('/users')}
-                  className="gradient-primary border-0 shadow-glow"
-                >
-                  Ir para Gestão de Usuários
-                </Button>
-              </CardContent>
-            </Card>
+            <UserManager />
           </TabsContent>
 
           {/* Notifications Tab */}
