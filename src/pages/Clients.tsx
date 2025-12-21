@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CreateClientWithEventDialog } from '@/components/clients/CreateClientWithEventDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useEntity } from '@/contexts/EntityContext';
 import { toast } from 'sonner';
@@ -42,7 +43,8 @@ export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
@@ -86,8 +88,7 @@ export default function Clients() {
   };
 
   const openCreateDialog = () => {
-    resetForm();
-    setIsDialogOpen(true);
+    setIsCreateDialogOpen(true);
   };
 
   const openEditDialog = (client: Client) => {
@@ -100,7 +101,7 @@ export default function Clients() {
       notes: client.notes || '',
     });
     setFormErrors({});
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
 
   const openDeleteDialog = (client: Client) => {
@@ -108,8 +109,8 @@ export default function Clients() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (!currentEntity) return;
+  const handleEditSubmit = async () => {
+    if (!currentEntity || !editingClient) return;
 
     const validation = clientSchema.safeParse(formData);
     if (!validation.success) {
@@ -133,24 +134,15 @@ export default function Clients() {
         entity_id: currentEntity.id,
       };
 
-      if (editingClient) {
-        const { error } = await supabase
-          .from('clients')
-          .update(clientData)
-          .eq('id', editingClient.id);
+      const { error } = await supabase
+        .from('clients')
+        .update(clientData)
+        .eq('id', editingClient.id);
 
-        if (error) throw error;
-        toast.success('Cliente atualizado com sucesso!');
-      } else {
-        const { error } = await supabase
-          .from('clients')
-          .insert(clientData);
+      if (error) throw error;
+      toast.success('Cliente atualizado com sucesso!');
 
-        if (error) throw error;
-        toast.success('Cliente criado com sucesso!');
-      }
-
-      setIsDialogOpen(false);
+      setIsEditDialogOpen(false);
       resetForm();
       fetchClients();
     } catch (error: any) {
@@ -285,11 +277,19 @@ export default function Clients() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Create Client with Event Dialog */}
+      <CreateClientWithEventDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onClientCreated={fetchClients}
+        onEventCreated={() => {}}
+      />
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+            <DialogTitle>Editar Cliente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -351,11 +351,11 @@ export default function Clients() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>
-              {editingClient ? 'Salvar' : 'Criar'}
+            <Button onClick={handleEditSubmit}>
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
