@@ -92,13 +92,20 @@ export default function AdminEntityUsers() {
         .from('entities')
         .select('id, name, slug, primary_color')
         .eq('id', entityId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        toast.error('Entidade não encontrada');
+        navigate('/admin/entities');
+        return;
+      }
+      
       setEntity(data);
     } catch (error) {
       console.error('Error fetching entity:', error);
-      toast.error('Entidade não encontrada');
+      toast.error('Erro ao carregar entidade');
       navigate('/admin/entities');
     }
   };
