@@ -1,18 +1,108 @@
-import { Truck, Package, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Truck, Package, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { mockEvents } from '@/data/mockData';
+import { useEntity } from '@/contexts/EntityContext';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
+
+interface Event {
+  id: string;
+  entity_id: string;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  status: string;
+  address: string | null;
+  total_value: number | null;
+  client?: {
+    id: string;
+    name: string;
+  };
+  event_items?: {
+    id: string;
+    quantity: number;
+  }[];
+}
 
 export default function Logistics() {
-  const activeEvents = mockEvents.filter(
+  const { currentEntity } = useEntity();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentEntity?.id) {
+      fetchEvents();
+    }
+  }, [currentEntity?.id]);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          client:clients(id, name),
+          event_items(id, quantity)
+        `)
+        .eq('entity_id', currentEntity!.id)
+        .order('start_date', { ascending: true });
+
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast.error('Erro ao carregar eventos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateEventStatus = async (eventId: string, newStatus: 'budget' | 'confirmed' | 'in_assembly' | 'in_transit' | 'finished') => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: newStatus })
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      toast.success('Status atualizado com sucesso');
+      fetchEvents();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Erro ao atualizar status');
+    }
+  };
+
+  const inAssemblyCount = events.filter(e => e.status === 'in_assembly').length;
+  const inTransitCount = events.filter(e => e.status === 'in_transit').length;
+  const finishedTodayCount = events.filter(e => 
+    e.status === 'finished' && isToday(new Date(e.end_date))
+  ).length;
+
+  const activeEvents = events.filter(
     e => e.status === 'in_assembly' || e.status === 'in_transit'
   );
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Header title="Logística" subtitle="Carregando..." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -31,7 +121,7 @@ export default function Logistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {mockEvents.filter(e => e.status === 'in_assembly').length}
+                  {inAssemblyCount}
                 </p>
                 <p className="text-sm text-muted-foreground">Em Montagem</p>
               </div>
@@ -45,7 +135,7 @@ export default function Logistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {mockEvents.filter(e => e.status === 'in_transit').length}
+                  {inTransitCount}
                 </p>
                 <p className="text-sm text-muted-foreground">Em Trânsito</p>
               </div>
@@ -59,7 +149,7 @@ export default function Logistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {mockEvents.filter(e => e.status === 'finished').length}
+                  {finishedTodayCount}
                 </p>
                 <p className="text-sm text-muted-foreground">Finalizados Hoje</p>
               </div>
@@ -109,15 +199,19 @@ export default function Logistics() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(event.startDate), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                        {' • '}
-                        {event.address}
+                        {format(new Date(event.start_date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                        {event.address && ` • ${event.address}`}
                       </p>
                       <div className="mt-2 flex items-center gap-4 text-sm">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Package className="h-4 w-4" />
-                          {event.items.length} itens
+                          {event.event_items?.length || 0} itens
                         </span>
+                        {event.client && (
+                          <span className="text-muted-foreground">
+                            Cliente: {event.client.name}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -125,22 +219,67 @@ export default function Logistics() {
                       <Button variant="outline" size="sm">
                         Ver Checklist
                       </Button>
-                      <Button 
-                        size="sm"
-                        className={cn(
-                          event.status === 'in_assembly'
-                            ? 'bg-info hover:bg-info/90'
-                            : 'bg-success hover:bg-success/90'
-                        )}
-                      >
-                        {event.status === 'in_assembly' ? 'Iniciar Saída' : 'Registrar Retorno'}
-                      </Button>
+                      {event.status === 'in_assembly' ? (
+                        <Button 
+                          size="sm"
+                          className="bg-info hover:bg-info/90"
+                          onClick={() => updateEventStatus(event.id, 'in_transit')}
+                        >
+                          Iniciar Saída
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          className="bg-success hover:bg-success/90"
+                          onClick={() => updateEventStatus(event.id, 'finished')}
+                        >
+                          Registrar Retorno
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+
+        {/* All Events Summary */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Histórico de Eventos</h2>
+            <p className="text-sm text-muted-foreground">
+              Todos os eventos da entidade
+            </p>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {events.filter(e => e.status === 'budget').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Orçamentos</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {events.filter(e => e.status === 'confirmed').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Confirmados</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {events.filter(e => e.status === 'in_assembly' || e.status === 'in_transit').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Em Andamento</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {events.filter(e => e.status === 'finished').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Finalizados</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>
