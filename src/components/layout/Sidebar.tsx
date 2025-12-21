@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -11,9 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   PartyPopper,
-  LogOut,
-  Building2
+  LogOut
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useEntity } from '@/contexts/EntityContext';
 import { Button } from '@/components/ui/button';
@@ -26,14 +26,19 @@ const menuItems = [
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
   { icon: BarChart3, label: 'Relatórios', path: '/reports' },
-  { icon: Building2, label: 'Entidades', path: '/entities', superAdminOnly: true },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
-  const { currentEntity, currentUser, logout } = useEntity();
+  const navigate = useNavigate();
+  const { currentEntity, currentUser } = useEntity();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
 
   return (
     <aside
@@ -114,7 +119,7 @@ export function Sidebar() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                onClick={logout}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
               </Button>
