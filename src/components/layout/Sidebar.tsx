@@ -55,8 +55,16 @@ export function Sidebar() {
         {/* Logo & Entity */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <div className={cn('flex items-center gap-3 overflow-hidden', isCollapsed && 'justify-center')}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-glow">
-              <PartyPopper className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden gradient-primary shadow-glow flex-shrink-0">
+              {currentEntity?.logo ? (
+                <img 
+                  src={currentEntity.logo} 
+                  alt={currentEntity.name || 'Logo'} 
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <PartyPopper className="h-5 w-5 text-primary-foreground" />
+              )}
             </div>
             {!isCollapsed && (
               <div className="animate-fade-in">
