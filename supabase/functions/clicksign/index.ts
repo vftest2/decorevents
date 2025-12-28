@@ -7,9 +7,18 @@ const corsHeaders = {
 };
 
 const CLICKSIGN_API_KEY = Deno.env.get('CLICKSIGN_API_KEY');
-const CLICKSIGN_BASE_URL = 'https://app.clicksign.com/api/v1';
+const CLICKSIGN_BASE_URL = 'https://app.clicksign.com/api/v3';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+// Helper to format phone number to Brazilian format (only digits, with country code)
+function formatPhoneNumber(phone: string): string {
+  let formatted = phone.replace(/\D/g, '');
+  if (!formatted.startsWith('55')) {
+    formatted = '55' + formatted;
+  }
+  return formatted;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,7 +28,7 @@ serve(async (req) => {
 
   try {
     const { action, ...params } = await req.json();
-    console.log(`ClickSign action: ${action}`, params);
+    console.log(`ClickSign API v3 action: ${action}`, params);
 
     if (!CLICKSIGN_API_KEY) {
       throw new Error('CLICKSIGN_API_KEY not configured');
@@ -28,78 +37,92 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     switch (action) {
+      // =====================================================
+      // FLUXO DE ENVELOPE (Documentos com Assinatura)
+      // =====================================================
       case 'upload_document': {
-        // Upload document to ClickSign
         const { documentBase64, fileName, contractId, signerName, signerEmail, signerPhone } = params;
 
         if (!documentBase64 || !fileName || !contractId) {
           throw new Error('Missing required parameters: documentBase64, fileName, contractId');
         }
 
-        console.log('Uploading document to ClickSign...');
+        console.log('Creating envelope in ClickSign API v3...');
 
-        // 1. Create document in ClickSign
-        const createDocResponse = await fetch(`${CLICKSIGN_BASE_URL}/documents?access_token=${CLICKSIGN_API_KEY}`, {
+        // 1. Criar envelope
+        const createEnvelopeResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
           body: JSON.stringify({
-            document: {
-              path: `/${fileName}`,
-              content_base64: documentBase64,
-              deadline_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-              auto_close: true,
-              locale: 'pt-BR',
-              sequence_enabled: false
+            data: {
+              type: 'envelopes',
+              attributes: {
+                name: fileName.replace('.pdf', '')
+              }
             }
           })
         });
 
-        if (!createDocResponse.ok) {
-          const errorText = await createDocResponse.text();
-          console.error('ClickSign create document error:', errorText);
-          throw new Error(`Failed to create document in ClickSign: ${errorText}`);
+        if (!createEnvelopeResponse.ok) {
+          const errorText = await createEnvelopeResponse.text();
+          console.error('ClickSign create envelope error:', errorText);
+          throw new Error(`Failed to create envelope: ${errorText}`);
         }
 
-        const docData = await createDocResponse.json();
-        const documentKey = docData.document.key;
-        console.log('Document created with key:', documentKey);
+        const envelopeData = await createEnvelopeResponse.json();
+        const envelopeId = envelopeData.data.id;
+        console.log('Envelope created with id:', envelopeId);
 
-        // 2. Create signer (using email authentication)
-        console.log('Creating signer with email:', signerEmail);
-        
-        const createSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/signers?access_token=${CLICKSIGN_API_KEY}`, {
+        // 2. Adicionar documento ao envelope
+        console.log('Adding document to envelope...');
+        const addDocumentResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}/documents`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
           body: JSON.stringify({
-            signer: {
-              name: signerName,
-              email: signerEmail,
-              auths: ['email'],
-              communicate_by: 'email'
+            data: {
+              type: 'documents',
+              attributes: {
+                filename: fileName,
+                content_base64: documentBase64
+              }
             }
           })
         });
 
-        if (!createSignerResponse.ok) {
-          const errorText = await createSignerResponse.text();
-          console.error('ClickSign create signer error:', errorText);
-          throw new Error(`Failed to create signer in ClickSign: ${errorText}`);
+        if (!addDocumentResponse.ok) {
+          const errorText = await addDocumentResponse.text();
+          console.error('ClickSign add document error:', errorText);
+          throw new Error(`Failed to add document: ${errorText}`);
         }
 
-        const signerData = await createSignerResponse.json();
-        const signerKey = signerData.signer.key;
-        console.log('Signer created with key:', signerKey);
+        const documentData = await addDocumentResponse.json();
+        const documentId = documentData.data.id;
+        console.log('Document added with id:', documentId);
 
-        // 3. Add signer to document
-        const addSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/lists?access_token=${CLICKSIGN_API_KEY}`, {
+        // 3. Adicionar signatário ao envelope
+        console.log('Adding signer to envelope...');
+        const addSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}/signers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
           body: JSON.stringify({
-            list: {
-              document_key: documentKey,
-              signer_key: signerKey,
-              sign_as: 'sign',
-              message: 'Por favor, assine o contrato do evento.'
+            data: {
+              type: 'signers',
+              attributes: {
+                name: signerName,
+                email: signerEmail
+              }
             }
           })
         });
@@ -107,32 +130,141 @@ serve(async (req) => {
         if (!addSignerResponse.ok) {
           const errorText = await addSignerResponse.text();
           console.error('ClickSign add signer error:', errorText);
-          throw new Error(`Failed to add signer to document: ${errorText}`);
+          throw new Error(`Failed to add signer: ${errorText}`);
         }
 
-        const listData = await addSignerResponse.json();
-        console.log('Signer added to document');
+        const signerData = await addSignerResponse.json();
+        const signerId = signerData.data.id;
+        console.log('Signer added with id:', signerId);
 
-        // 4. Send email notification
-        const notifyResponse = await fetch(`${CLICKSIGN_BASE_URL}/notifications?access_token=${CLICKSIGN_API_KEY}`, {
+        // 4. Configurar requisitos de assinatura
+        console.log('Configuring signature requirements...');
+        
+        // Requisito de ação: assinar
+        const requirementAgreeResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}/requirements`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
           body: JSON.stringify({
-            request_signature_key: listData.list.request_signature_key,
-            message: 'Você recebeu um contrato para assinatura. Clique no link para assinar.',
+            data: {
+              type: 'requirements',
+              attributes: {
+                action: 'agree',
+                role: 'sign'
+              },
+              relationships: {
+                document: {
+                  data: { type: 'documents', id: documentId }
+                },
+                signer: {
+                  data: { type: 'signers', id: signerId }
+                }
+              }
+            }
+          })
+        });
+
+        if (!requirementAgreeResponse.ok) {
+          const errorText = await requirementAgreeResponse.text();
+          console.error('ClickSign requirement agree error:', errorText);
+          throw new Error(`Failed to add agree requirement: ${errorText}`);
+        }
+
+        // Requisito de evidência: email
+        const requirementEvidenceResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}/requirements`, {
+          method: 'POST',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
+          body: JSON.stringify({
+            data: {
+              type: 'requirements',
+              attributes: {
+                action: 'provide_evidence',
+                auth: 'email'
+              },
+              relationships: {
+                document: {
+                  data: { type: 'documents', id: documentId }
+                },
+                signer: {
+                  data: { type: 'signers', id: signerId }
+                }
+              }
+            }
+          })
+        });
+
+        if (!requirementEvidenceResponse.ok) {
+          const errorText = await requirementEvidenceResponse.text();
+          console.error('ClickSign requirement evidence error:', errorText);
+          throw new Error(`Failed to add evidence requirement: ${errorText}`);
+        }
+
+        console.log('Requirements configured');
+
+        // 5. Ativar o envelope (status: running)
+        console.log('Activating envelope...');
+        const activateEnvelopeResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
+          body: JSON.stringify({
+            data: {
+              id: envelopeId,
+              type: 'envelopes',
+              attributes: {
+                status: 'running'
+              }
+            }
+          })
+        });
+
+        if (!activateEnvelopeResponse.ok) {
+          const errorText = await activateEnvelopeResponse.text();
+          console.error('ClickSign activate envelope error:', errorText);
+          throw new Error(`Failed to activate envelope: ${errorText}`);
+        }
+
+        console.log('Envelope activated');
+
+        // 6. Disparar notificação por email
+        console.log('Sending email notification...');
+        const notifyResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${envelopeId}/notifications`, {
+          method: 'POST',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
+          body: JSON.stringify({
+            data: {
+              type: 'notifications',
+              attributes: {}
+            }
           })
         });
 
         if (!notifyResponse.ok) {
-          console.warn('Email notification might have failed, but continuing...');
+          console.warn('Email notification might have failed, but envelope is active');
+        } else {
+          console.log('Email notification sent');
         }
 
-        // 5. Update contract in database
+        // 7. Atualizar contrato no banco de dados
         const { error: updateError } = await supabase
           .from('contracts')
           .update({
-            clicksign_document_key: documentKey,
-            clicksign_signer_key: signerKey,
+            clicksign_document_key: envelopeId,
+            clicksign_signer_key: signerId,
             status: 'sent'
           })
           .eq('id', contractId);
@@ -146,33 +278,193 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          documentKey,
-          signerKey,
-          message: 'Documento enviado para assinatura via ClickSign'
+          envelopeId,
+          documentId,
+          signerId,
+          message: 'Documento enviado para assinatura via ClickSign (API v3)'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
+      // =====================================================
+      // FLUXO DE ACEITE VIA WHATSAPP (Sem documento PDF)
+      // =====================================================
+      case 'create_whatsapp_acceptance': {
+        const { contractId, signerName, signerPhone, title, message: acceptanceMessage } = params;
+
+        if (!signerName || !signerPhone || !title || !acceptanceMessage) {
+          throw new Error('Missing required parameters: signerName, signerPhone, title, message');
+        }
+
+        const formattedPhone = formatPhoneNumber(signerPhone);
+        console.log('Creating WhatsApp acceptance term...', { signerName, formattedPhone });
+
+        const createAcceptanceResponse = await fetch(`${CLICKSIGN_BASE_URL}/acceptance_term/whatsapps`, {
+          method: 'POST',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
+          body: JSON.stringify({
+            data: {
+              type: 'acceptance_term_whatsapps',
+              attributes: {
+                title: title,
+                sender_name_option: 'account_name',
+                message: acceptanceMessage,
+                signer_phone: formattedPhone,
+                signer_name: signerName
+              }
+            }
+          })
+        });
+
+        if (!createAcceptanceResponse.ok) {
+          const errorText = await createAcceptanceResponse.text();
+          console.error('ClickSign create WhatsApp acceptance error:', errorText);
+          throw new Error(`Failed to create WhatsApp acceptance: ${errorText}`);
+        }
+
+        const acceptanceData = await createAcceptanceResponse.json();
+        const acceptanceId = acceptanceData.data.id;
+        const acceptanceStatus = acceptanceData.data.attributes.status;
+        console.log('WhatsApp acceptance created:', { acceptanceId, status: acceptanceStatus });
+
+        // Atualizar contrato se fornecido
+        if (contractId) {
+          const { error: updateError } = await supabase
+            .from('contracts')
+            .update({
+              clicksign_document_key: acceptanceId,
+              status: 'sent',
+              whatsapp_sent: true,
+              whatsapp_sent_at: new Date().toISOString()
+            })
+            .eq('id', contractId);
+
+          if (updateError) {
+            console.error('Error updating contract:', updateError);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          acceptanceId,
+          status: acceptanceStatus,
+          message: 'Aceite enviado via WhatsApp'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'check_whatsapp_acceptance': {
+        const { acceptanceId } = params;
+
+        if (!acceptanceId) {
+          throw new Error('Missing acceptanceId parameter');
+        }
+
+        const statusResponse = await fetch(`${CLICKSIGN_BASE_URL}/acceptance_term/whatsapps/${acceptanceId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          }
+        });
+
+        if (!statusResponse.ok) {
+          const errorText = await statusResponse.text();
+          throw new Error(`Failed to get acceptance status: ${errorText}`);
+        }
+
+        const statusData = await statusResponse.json();
+        const status = statusData.data.attributes.status;
+
+        return new Response(JSON.stringify({
+          success: true,
+          acceptanceId,
+          status,
+          data: statusData.data.attributes
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'cancel_whatsapp_acceptance': {
+        const { acceptanceId } = params;
+
+        if (!acceptanceId) {
+          throw new Error('Missing acceptanceId parameter');
+        }
+
+        const cancelResponse = await fetch(`${CLICKSIGN_BASE_URL}/acceptance_term/whatsapps/${acceptanceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          },
+          body: JSON.stringify({
+            data: {
+              id: acceptanceId,
+              type: 'acceptance_term_whatsapps',
+              attributes: {
+                status: 'canceled'
+              }
+            }
+          })
+        });
+
+        if (!cancelResponse.ok) {
+          const errorText = await cancelResponse.text();
+          throw new Error(`Failed to cancel acceptance: ${errorText}`);
+        }
+
+        const cancelData = await cancelResponse.json();
+
+        return new Response(JSON.stringify({
+          success: true,
+          acceptanceId,
+          status: 'canceled',
+          message: 'Aceite cancelado com sucesso'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // =====================================================
+      // VERIFICAR STATUS DO ENVELOPE
+      // =====================================================
       case 'check_status': {
-        // Check document signing status
         const { documentKey, contractId } = params;
 
         if (!documentKey) {
           throw new Error('Missing documentKey parameter');
         }
 
-        const statusResponse = await fetch(`${CLICKSIGN_BASE_URL}/documents/${documentKey}?access_token=${CLICKSIGN_API_KEY}`);
+        // API v3: buscar envelope por ID
+        const statusResponse = await fetch(`${CLICKSIGN_BASE_URL}/envelopes/${documentKey}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': CLICKSIGN_API_KEY,
+            'Content-Type': 'application/vnd.api+json',
+            'Accept': 'application/vnd.api+json'
+          }
+        });
 
         if (!statusResponse.ok) {
           const errorText = await statusResponse.text();
-          throw new Error(`Failed to get document status: ${errorText}`);
+          throw new Error(`Failed to get envelope status: ${errorText}`);
         }
 
         const statusData = await statusResponse.json();
-        const isSigned = statusData.document.status === 'closed';
+        const envelopeStatus = statusData.data.attributes.status;
+        const isSigned = envelopeStatus === 'finished';
 
-        // Update contract if signed
+        // Atualizar contrato se assinado
         if (isSigned && contractId) {
           await supabase
             .from('contracts')
@@ -185,34 +477,9 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          status: statusData.document.status,
+          status: envelopeStatus,
           isSigned,
-          document: statusData.document
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      case 'download_signed': {
-        // Download signed document
-        const { documentKey } = params;
-
-        if (!documentKey) {
-          throw new Error('Missing documentKey parameter');
-        }
-
-        const downloadResponse = await fetch(`${CLICKSIGN_BASE_URL}/documents/${documentKey}/download?access_token=${CLICKSIGN_API_KEY}`);
-
-        if (!downloadResponse.ok) {
-          const errorText = await downloadResponse.text();
-          throw new Error(`Failed to download document: ${errorText}`);
-        }
-
-        const downloadData = await downloadResponse.json();
-
-        return new Response(JSON.stringify({
-          success: true,
-          downloadUrl: downloadData.url
+          envelope: statusData.data.attributes
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
