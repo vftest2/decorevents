@@ -108,6 +108,8 @@ serve(async (req) => {
     // Handle different events
     switch (eventName) {
       case 'sign':
+      case 'close':
+      case 'auto_close':
       case 'document_closed':
         // Document was signed
         console.log('Document signed or closed, updating contract status');
@@ -129,19 +131,12 @@ serve(async (req) => {
         break;
 
       case 'cancel':
-        // Document was cancelled
-        console.log('Document cancelled, updating contract status');
-        
-        await supabase
-          .from('contracts')
-          .update({ status: 'cancelled' })
-          .eq('id', contract.id);
-        
-        break;
-
       case 'refusal':
-        // Signer refused to sign
-        console.log('Document refused');
+      case 'acceptance_term_refused':
+      case 'acceptance_term_canceled':
+      case 'acceptance_term_expired':
+        // Document was cancelled or refused
+        console.log('Document cancelled or refused, updating contract status');
         
         await supabase
           .from('contracts')
@@ -150,9 +145,56 @@ serve(async (req) => {
         
         break;
 
+      case 'acceptance_term_error':
+      case 'liveness_refused':
+      case 'facematch_refused':
+      case 'documentscopy_refused':
+      case 'biometric_refused':
+      case 'ocr_refused':
+      case 'attempts_by_whatsapp_exceeded':
+      case 'attempts_by_liveness_or_facematch_exceeded':
+        // Error events - mark as failed
+        console.log('Document error event:', eventName);
+        
+        await supabase
+          .from('contracts')
+          .update({ status: 'failed' })
+          .eq('id', contract.id);
+        
+        break;
+
+      case 'add_signer':
+      case 'remove_signer':
       case 'deadline':
-        // Document deadline passed
-        console.log('Document deadline passed');
+      case 'update_deadline':
+      case 'update_auto_close':
+      case 'update_locale':
+      case 'add_image':
+      case 'upload':
+      case 'custom':
+      case 'signature_started':
+        // Informational events - just log
+        console.log('Informational event:', eventName);
+        break;
+
+      case 'acceptance_term_enqueued':
+      case 'acceptance_term_sent':
+        // Acceptance term sent - contract is in progress
+        console.log('Acceptance term sent to signer');
+        break;
+
+      case 'acceptance_term_completed':
+        // Acceptance term completed - signed
+        console.log('Acceptance term completed');
+        
+        await supabase
+          .from('contracts')
+          .update({
+            status: 'signed',
+            signed_at: new Date().toISOString()
+          })
+          .eq('id', contract.id);
+        
         break;
 
       default:
