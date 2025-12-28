@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, formatPhone } from '@/components/ui/phone-input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -370,7 +370,7 @@ export default function Clients() {
                           {client.phone && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span>{client.phone}</span>
+                              <span>{formatPhone(client.phone)}</span>
                             </div>
                           )}
                         </div>
