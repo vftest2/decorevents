@@ -224,10 +224,10 @@ export function GenerateContractDialog({
               </Button>
               <Button 
                 onClick={handleSendContract}
-                disabled={!signerName || !signerPhone}
+                disabled={!signerName || !signerEmail}
               >
                 <Send className="h-4 w-4 mr-2" />
-                Enviar via WhatsApp
+                Enviar para ClickSign
               </Button>
             </DialogFooter>
           </div>

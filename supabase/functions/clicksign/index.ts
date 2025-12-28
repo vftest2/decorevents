@@ -64,15 +64,8 @@ serve(async (req) => {
         const documentKey = docData.document.key;
         console.log('Document created with key:', documentKey);
 
-        // 2. Create signer
-        // Format phone number to international format (+55...)
-        let formattedPhone = signerPhone?.replace(/\D/g, '') || '';
-        if (formattedPhone && !formattedPhone.startsWith('55')) {
-          formattedPhone = '55' + formattedPhone;
-        }
-        formattedPhone = '+' + formattedPhone;
-        
-        console.log('Creating signer with phone:', formattedPhone, 'email:', signerEmail);
+        // 2. Create signer (using email authentication)
+        console.log('Creating signer with email:', signerEmail);
         
         const createSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/signers?access_token=${CLICKSIGN_API_KEY}`, {
           method: 'POST',
@@ -81,9 +74,8 @@ serve(async (req) => {
             signer: {
               name: signerName,
               email: signerEmail,
-              phone_number: formattedPhone,
-              auths: ['whatsapp'],
-              communicate_by: 'whatsapp'
+              auths: ['email'],
+              communicate_by: 'email'
             }
           })
         });
@@ -118,20 +110,21 @@ serve(async (req) => {
           throw new Error(`Failed to add signer to document: ${errorText}`);
         }
 
+        const listData = await addSignerResponse.json();
         console.log('Signer added to document');
 
-        // 4. Send notification via WhatsApp
+        // 4. Send email notification
         const notifyResponse = await fetch(`${CLICKSIGN_BASE_URL}/notifications?access_token=${CLICKSIGN_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            request_signature_key: (await addSignerResponse.json()).list.request_signature_key,
+            request_signature_key: listData.list.request_signature_key,
             message: 'Você recebeu um contrato para assinatura. Clique no link para assinar.',
           })
         });
 
         if (!notifyResponse.ok) {
-          console.warn('WhatsApp notification might have failed, but continuing...');
+          console.warn('Email notification might have failed, but continuing...');
         }
 
         // 5. Update contract in database
@@ -140,9 +133,7 @@ serve(async (req) => {
           .update({
             clicksign_document_key: documentKey,
             clicksign_signer_key: signerKey,
-            status: 'sent',
-            whatsapp_sent: true,
-            whatsapp_sent_at: new Date().toISOString()
+            status: 'sent'
           })
           .eq('id', contractId);
 
@@ -157,7 +148,7 @@ serve(async (req) => {
           success: true,
           documentKey,
           signerKey,
-          message: 'Documento enviado para assinatura via WhatsApp'
+          message: 'Documento enviado para assinatura via ClickSign'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
