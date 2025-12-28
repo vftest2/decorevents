@@ -4,6 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEntity } from '@/contexts/EntityContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { cn } from '@/lib/utils';
+import { cn, formatPhoneForDisplay, formatPhoneToInternational } from '@/lib/utils';
 
 interface ClientStats {
   eventCount: number;
@@ -193,7 +194,7 @@ export default function Clients() {
       const clientData = {
         name: formData.name.trim(),
         email: formData.email?.trim() || null,
-        phone: formData.phone?.trim() || null,
+        phone: formData.phone ? formatPhoneToInternational(formData.phone) : null,
         address: formData.address?.trim() || null,
         notes: formData.notes?.trim() || null,
         client_type: formData.client_type,
@@ -369,7 +370,7 @@ export default function Clients() {
                           {client.phone && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span>{client.phone}</span>
+                              <span>{formatPhoneForDisplay(client.phone)}</span>
                             </div>
                           )}
                         </div>
@@ -482,14 +483,15 @@ export default function Clients() {
               {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
+              <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+              <PhoneInput
                 id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(00) 00000-0000"
+                value={formData.phone || ''}
+                onChange={(value) => setFormData({ ...formData, phone: value })}
+                placeholder="5592999106091"
                 className={formErrors.phone ? 'border-destructive' : ''}
               />
+              <p className="text-xs text-muted-foreground">Formato: 55 + DDD + número (ex: 5592999106091)</p>
               {formErrors.phone && <p className="text-sm text-destructive">{formErrors.phone}</p>}
             </div>
             <div className="space-y-2">
