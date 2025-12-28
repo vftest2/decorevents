@@ -23,6 +23,8 @@ import NotFound from "./pages/NotFound";
 import Rentals from "./pages/Rentals";
 import RentalDetails from "./pages/RentalDetails";
 import Damages from "./pages/Damages";
+import Contracts from "./pages/Contracts";
+import EventsList from "./pages/EventsList";
 
 const queryClient = new QueryClient();
 
@@ -43,10 +45,12 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/events/list" element={<EventsList />} />
               <Route path="/events/:eventId" element={<EventDetails />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/rentals" element={<Rentals />} />
               <Route path="/rentals/:rentalId" element={<RentalDetails />} />
+              <Route path="/contracts" element={<Contracts />} />
               <Route path="/damages" element={<Damages />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/users" element={<EntityUsers />} />

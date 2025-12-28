@@ -31,7 +31,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { EventStatus } from '@/types';
-import { GenerateContractDialog } from '@/components/contracts/GenerateContractDialog';
+import { EventContractSection } from '@/components/contracts/EventContractSection';
 
 interface EventData {
   id: string;
@@ -105,7 +105,6 @@ export default function EventDetails() {
   const [itemQuantity, setItemQuantity] = useState('1');
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isDeletingItem, setIsDeletingItem] = useState<string | null>(null);
-  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
 
   useEffect(() => {
     if (eventId && currentEntity?.id) {
@@ -439,26 +438,17 @@ export default function EventDetails() {
           </Card>
         )}
 
-        {/* Generate Contract Button - Show when status is not 'budget' */}
-        {event.status !== 'budget' && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileSignature className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="font-medium">Contrato Digital</p>
-                  <p className="text-sm text-muted-foreground">
-                    Envie o contrato para assinatura via WhatsApp
-                  </p>
-                </div>
-              </div>
-              <Button onClick={() => setIsContractDialogOpen(true)}>
-                <FileSignature className="h-4 w-4 mr-2" />
-                Gerar Contrato
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Contracts Section */}
+        <EventContractSection
+          eventId={event.id}
+          entityId={event.entity_id}
+          clientId={event.client_id || undefined}
+          clientName={event.clients?.name}
+          clientEmail={event.clients?.email || undefined}
+          clientPhone={event.clients?.phone || undefined}
+          eventTitle={event.title}
+          eventStatus={event.status}
+        />
 
         {/* Event Items */}
         <Card>
@@ -598,24 +588,6 @@ export default function EventDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Generate Contract Dialog */}
-      <GenerateContractDialog
-        open={isContractDialogOpen}
-        onOpenChange={setIsContractDialogOpen}
-        event={{
-          id: event.id,
-          title: event.title,
-          entityId: event.entity_id,
-          clientId: event.client_id || undefined,
-          clientName: event.clients?.name,
-          clientEmail: event.clients?.email || undefined,
-          clientPhone: event.clients?.phone || undefined
-        }}
-        onContractSent={() => {
-          toast.success('Contrato enviado com sucesso!');
-        }}
-      />
     </MainLayout>
   );
 }

@@ -12,6 +12,8 @@ import {
   PartyPopper,
   LogOut,
   ClipboardList,
+  FileSignature,
+  CalendarDays,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -23,8 +25,10 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Users, label: 'Clientes', path: '/clients' },
   { icon: Calendar, label: 'Agenda', path: '/agenda' },
+  { icon: CalendarDays, label: 'Eventos', path: '/events/list' },
   { icon: Package, label: 'Estoque', path: '/inventory' },
   { icon: ClipboardList, label: 'Locação', path: '/rentals' },
+  { icon: FileSignature, label: 'Contratos', path: '/contracts' },
   { icon: Truck, label: 'Logística', path: '/logistics' },
   { icon: BarChart3, label: 'Relatórios', path: '/reports' },
 ];
