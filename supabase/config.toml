@@ -1,1 +1,4 @@
 project_id = "kvsmtzzgdlubzmrwvjxz"
+
+[functions.clicksign]
+verify_jwt = true
