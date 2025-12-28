@@ -65,6 +65,15 @@ serve(async (req) => {
         console.log('Document created with key:', documentKey);
 
         // 2. Create signer
+        // Format phone number to international format (+55...)
+        let formattedPhone = signerPhone?.replace(/\D/g, '') || '';
+        if (formattedPhone && !formattedPhone.startsWith('55')) {
+          formattedPhone = '55' + formattedPhone;
+        }
+        formattedPhone = '+' + formattedPhone;
+        
+        console.log('Creating signer with phone:', formattedPhone);
+        
         const createSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/signers?access_token=${CLICKSIGN_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -72,7 +81,7 @@ serve(async (req) => {
             signer: {
               name: signerName,
               email: signerEmail,
-              phone_number: signerPhone?.replace(/\D/g, ''),
+              phone_number: formattedPhone,
               auths: ['whatsapp'],
               delivery: 'whatsapp'
             }
