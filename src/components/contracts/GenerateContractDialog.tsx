@@ -3,9 +3,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Send, Loader2, CheckCircle } from 'lucide-react';
+import { FileText, Send, Loader2, CheckCircle, MessageCircle } from 'lucide-react';
 
 interface GenerateContractDialogProps {
   open: boolean;
@@ -18,6 +19,9 @@ interface GenerateContractDialogProps {
     clientName?: string;
     clientEmail?: string;
     clientPhone?: string;
+    totalValue?: number;
+    startDate?: string;
+    address?: string;
   };
   onContractSent?: () => void;
 }
@@ -29,66 +33,35 @@ export function GenerateContractDialog({
   onContractSent
 }: GenerateContractDialogProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState<'upload' | 'confirm' | 'sending' | 'success'>('upload');
-  const [file, setFile] = useState<File | null>(null);
+  const [step, setStep] = useState<'form' | 'sending' | 'success'>('form');
   const [signerName, setSignerName] = useState(event.clientName || '');
-  const [signerEmail, setSignerEmail] = useState(event.clientEmail || '');
   const [signerPhone, setSignerPhone] = useState(event.clientPhone || '');
+  const [title, setTitle] = useState(`Contrato - ${event.title}`);
+  const [message, setMessage] = useState(
+    `Eu, ${event.clientName || '[Nome do Cliente]'}, declaro que concordo com os termos do contrato para o evento "${event.title}"${event.totalValue ? `, no valor total de R$ ${event.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}${event.startDate ? `, com data prevista para ${new Date(event.startDate).toLocaleDateString('pt-BR')}` : ''}${event.address ? `, no local: ${event.address}` : ''}.`
+  );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        toast({
-          title: 'Arquivo inválido',
-          description: 'Por favor, selecione um arquivo PDF.',
-          variant: 'destructive'
-        });
-        return;
-      }
-      setFile(selectedFile);
-      setStep('confirm');
+  const handleSendWhatsApp = async () => {
+    if (!signerName || !signerPhone || !title || !message) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos para enviar o aceite.',
+        variant: 'destructive'
+      });
+      return;
     }
-  };
-
-  const handleSendContract = async () => {
-    if (!file) return;
 
     setStep('sending');
 
     try {
-      // Convert file to base64 with MIME type prefix (required by ClickSign)
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Keep the full data URI with MIME type - ClickSign requires it
-          resolve(result);
-        };
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(file);
-      const documentBase64 = await base64Promise;
-
-      // 1. Upload file to Supabase Storage
-      const fileName = `${event.id}/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('contracts')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        throw new Error(`Erro ao fazer upload: ${uploadError.message}`);
-      }
-
-      // 2. Create contract record
+      // 1. Create contract record
       const { data: contract, error: contractError } = await supabase
         .from('contracts')
         .insert({
           entity_id: event.entityId,
           event_id: event.id,
           client_id: event.clientId,
-          document_name: file.name,
-          document_url: fileName,
+          document_name: title,
           status: 'pending'
         })
         .select()
@@ -98,136 +71,131 @@ export function GenerateContractDialog({
         throw new Error(`Erro ao criar contrato: ${contractError.message}`);
       }
 
-      // 3. Send to ClickSign via Edge Function
+      // 2. Send to ClickSign via WhatsApp Acceptance
       const { data, error } = await supabase.functions.invoke('clicksign', {
         body: {
-          action: 'upload_document',
-          documentBase64,
-          fileName: file.name,
+          action: 'create_whatsapp_acceptance',
           contractId: contract.id,
           signerName,
-          signerEmail,
-          signerPhone
+          signerPhone,
+          title,
+          message
         }
       });
 
       if (error || !data?.success) {
+        // Delete the contract record if ClickSign fails
+        await supabase.from('contracts').delete().eq('id', contract.id);
         throw new Error(data?.error || error?.message || 'Erro ao enviar para ClickSign');
       }
 
       setStep('success');
       toast({
-        title: 'Contrato enviado!',
-        description: 'O contrato foi enviado via WhatsApp para assinatura.'
+        title: 'Aceite enviado!',
+        description: 'O aceite foi enviado via WhatsApp para confirmação.'
       });
 
       onContractSent?.();
     } catch (error) {
-      console.error('Error sending contract:', error);
+      console.error('Error sending WhatsApp acceptance:', error);
       toast({
-        title: 'Erro ao enviar contrato',
+        title: 'Erro ao enviar aceite',
         description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive'
       });
-      setStep('confirm');
+      setStep('form');
     }
   };
 
   const handleClose = () => {
-    setStep('upload');
-    setFile(null);
+    setStep('form');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Gerar Contrato
+            <MessageCircle className="h-5 w-5 text-green-500" />
+            Enviar Aceite via WhatsApp
           </DialogTitle>
           <DialogDescription>
             Evento: {event.title}
           </DialogDescription>
         </DialogHeader>
 
-        {step === 'upload' && (
+        {step === 'form' && (
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Faça upload do PDF do contrato
+            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-sm text-green-700 dark:text-green-300">
+                <strong>ClickSign via WhatsApp:</strong> O cliente receberá uma mensagem no WhatsApp para confirmar o aceite do contrato.
               </p>
-              <Input
-                type="file"
-                accept=".pdf"
-                onChange={handleFileChange}
-                className="hidden"
-                id="contract-upload"
-              />
-              <Label htmlFor="contract-upload" className="cursor-pointer">
-                <Button variant="outline" asChild>
-                  <span>Selecionar PDF</span>
-                </Button>
-              </Label>
-            </div>
-          </div>
-        )}
-
-        {step === 'confirm' && file && (
-          <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">
-              <FileText className="h-8 w-8 text-primary" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{file.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {(file.size / 1024).toFixed(1)} KB
-                </p>
-              </div>
             </div>
 
             <div className="space-y-3">
               <div>
-                <Label htmlFor="signer-name">Nome do Signatário</Label>
+                <Label htmlFor="title">Título do Aceite</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex: Contrato de Locação"
+                  maxLength={255}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="signer-name">Nome do Cliente</Label>
                 <Input
                   id="signer-name"
                   value={signerName}
                   onChange={(e) => setSignerName(e.target.value)}
                   placeholder="Nome completo"
+                  maxLength={200}
                 />
               </div>
+
               <div>
-                <Label htmlFor="signer-email">E-mail</Label>
-                <Input
-                  id="signer-email"
-                  type="email"
-                  value={signerEmail}
-                  onChange={(e) => setSignerEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="signer-phone">WhatsApp</Label>
+                <Label htmlFor="signer-phone">WhatsApp do Cliente</Label>
                 <Input
                   id="signer-phone"
                   value={signerPhone}
                   onChange={(e) => setSignerPhone(e.target.value)}
-                  placeholder="+55 11 99999-9999"
+                  placeholder="11999999999"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Apenas números, com DDD (mínimo 10 dígitos)
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="message">Mensagem do Aceite</Label>
+                <Textarea
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Texto que o cliente irá aceitar..."
+                  rows={4}
+                  maxLength={1500}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {message.length}/1500 caracteres
+                </p>
               </div>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setStep('upload')}>
-                Voltar
+              <Button variant="outline" onClick={handleClose}>
+                Cancelar
               </Button>
               <Button 
-                onClick={handleSendContract}
-                disabled={!signerName || !signerEmail}
+                onClick={handleSendWhatsApp}
+                disabled={!signerName || !signerPhone || !title || !message}
+                className="bg-green-600 hover:bg-green-700"
               >
                 <Send className="h-4 w-4 mr-2" />
-                Enviar para ClickSign
+                Enviar via WhatsApp
               </Button>
             </DialogFooter>
           </div>
@@ -235,9 +203,9 @@ export function GenerateContractDialog({
 
         {step === 'sending' && (
           <div className="py-8 text-center">
-            <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
+            <Loader2 className="h-12 w-12 mx-auto animate-spin text-green-500 mb-4" />
             <p className="text-muted-foreground">
-              Enviando contrato para assinatura...
+              Enviando aceite via WhatsApp...
             </p>
           </div>
         )}
@@ -245,9 +213,9 @@ export function GenerateContractDialog({
         {step === 'success' && (
           <div className="py-8 text-center">
             <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-            <p className="font-medium mb-2">Contrato enviado com sucesso!</p>
+            <p className="font-medium mb-2">Aceite enviado com sucesso!</p>
             <p className="text-sm text-muted-foreground mb-4">
-              O cliente receberá o contrato via WhatsApp para assinatura.
+              O cliente receberá o aceite no WhatsApp para confirmação.
             </p>
             <Button onClick={handleClose}>Fechar</Button>
           </div>

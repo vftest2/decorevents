@@ -33,6 +33,9 @@ interface EventContractSectionProps {
   clientPhone?: string;
   eventTitle: string;
   eventStatus: string;
+  totalValue?: number;
+  startDate?: string;
+  address?: string;
 }
 
 const statusConfig: Record<ContractStatus, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
@@ -50,7 +53,10 @@ export function EventContractSection({
   clientEmail,
   clientPhone,
   eventTitle,
-  eventStatus
+  eventStatus,
+  totalValue,
+  startDate,
+  address
 }: EventContractSectionProps) {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,21 +92,45 @@ export function EventContractSection({
 
     setCheckingStatus(contract.id);
     try {
-      const { data, error } = await supabase.functions.invoke('clicksign', {
-        body: {
-          action: 'check_status',
-          documentKey: contract.clicksign_document_key,
-          contractId: contract.id
-        }
-      });
+      // Check if it's a WhatsApp acceptance (no PDF) or envelope
+      const action = contract.whatsapp_sent ? 'check_whatsapp_acceptance' : 'check_status';
+      const body = contract.whatsapp_sent 
+        ? { action, acceptanceId: contract.clicksign_document_key }
+        : { action, documentKey: contract.clicksign_document_key, contractId: contract.id };
+
+      const { data, error } = await supabase.functions.invoke('clicksign', { body });
 
       if (error) throw error;
 
-      if (data.isSigned) {
-        toast.success('Contrato foi assinado!');
-        fetchContracts();
+      // Handle WhatsApp acceptance status
+      if (contract.whatsapp_sent) {
+        const status = data.status;
+        if (status === 'completed') {
+          // Update contract to signed
+          await supabase
+            .from('contracts')
+            .update({ status: 'signed', signed_at: new Date().toISOString() })
+            .eq('id', contract.id);
+          toast.success('Aceite confirmado pelo cliente!');
+          fetchContracts();
+        } else if (status === 'refused' || status === 'canceled' || status === 'expired') {
+          await supabase
+            .from('contracts')
+            .update({ status: 'cancelled' })
+            .eq('id', contract.id);
+          toast.info(`Status do aceite: ${status}`);
+          fetchContracts();
+        } else {
+          toast.info(`Status do aceite: ${status}`);
+        }
       } else {
-        toast.info(`Status do documento: ${data.status}`);
+        // Handle envelope status
+        if (data.isSigned) {
+          toast.success('Contrato foi assinado!');
+          fetchContracts();
+        } else {
+          toast.info(`Status do documento: ${data.status}`);
+        }
       }
     } catch (error) {
       console.error('Error checking status:', error);
@@ -253,7 +283,10 @@ export function EventContractSection({
           clientId,
           clientName,
           clientEmail,
-          clientPhone
+          clientPhone,
+          totalValue,
+          startDate,
+          address
         }}
         onContractSent={() => {
           fetchContracts();
