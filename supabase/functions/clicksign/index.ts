@@ -11,18 +11,19 @@ const CLICKSIGN_BASE_URL = 'https://app.clicksign.com/api/v3';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-// Helper to ensure phone number is in correct format (55DDXXXXXXXXX)
+// Helper to ensure phone number is in correct format for ClickSign (DDD + number)
+// IMPORTANT: ClickSign expects ONLY DDD+number. Do NOT prefix country code (55), otherwise it becomes the DDD.
 function formatPhoneNumber(phone: string): string {
   // Remove all non-digits
-  let formatted = phone.replace(/\D/g, '');
-  
-  // Add country code if not present
-  if (!formatted.startsWith('55')) {
-    formatted = '55' + formatted;
+  let digits = phone.replace(/\D/g, '');
+
+  // If a country code was provided (55), strip it.
+  if (digits.startsWith('55') && digits.length > 11) {
+    digits = digits.slice(2);
   }
-  
-  console.log(`Phone formatted: ${phone} -> ${formatted}`);
-  return formatted;
+
+  console.log(`Phone normalized: ${phone} -> ${digits}`);
+  return digits;
 }
 
 serve(async (req) => {
