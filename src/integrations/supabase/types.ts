@@ -118,6 +118,79 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          clicksign_document_key: string | null
+          clicksign_signer_key: string | null
+          client_id: string | null
+          created_at: string
+          document_name: string
+          document_url: string | null
+          entity_id: string
+          event_id: string
+          id: string
+          signed_at: string | null
+          status: string
+          updated_at: string
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          clicksign_document_key?: string | null
+          clicksign_signer_key?: string | null
+          client_id?: string | null
+          created_at?: string
+          document_name: string
+          document_url?: string | null
+          entity_id: string
+          event_id: string
+          id?: string
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          clicksign_document_key?: string | null
+          clicksign_signer_key?: string | null
+          client_id?: string | null
+          created_at?: string
+          document_name?: string
+          document_url?: string | null
+          entity_id?: string
+          event_id?: string
+          id?: string
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entities: {
         Row: {
           accent_color: string | null
