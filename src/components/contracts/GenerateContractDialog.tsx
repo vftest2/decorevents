@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { formatPhoneToInternational, isValidBrazilianPhone } from '@/lib/utils';
 import { FileText, Send, Loader2, CheckCircle, MessageCircle } from 'lucide-react';
 
 interface GenerateContractDialogProps {
@@ -53,16 +51,6 @@ export function GenerateContractDialog({
       return;
     }
 
-    const formattedPhone = formatPhoneToInternational(signerPhone);
-    if (!isValidBrazilianPhone(formattedPhone)) {
-      toast({
-        title: 'Telefone inválido',
-        description: 'O telefone deve estar no formato: 55 + DDD + número (ex: 5592999106091)',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     setStep('sending');
 
     try {
@@ -89,7 +77,7 @@ export function GenerateContractDialog({
           action: 'create_whatsapp_acceptance',
           contractId: contract.id,
           signerName,
-          signerPhone: formattedPhone,
+          signerPhone,
           title,
           message
         }
@@ -170,14 +158,14 @@ export function GenerateContractDialog({
 
               <div>
                 <Label htmlFor="signer-phone">WhatsApp do Cliente</Label>
-                <PhoneInput
+                <Input
                   id="signer-phone"
                   value={signerPhone}
-                  onChange={setSignerPhone}
-                  placeholder="5592999106091"
+                  onChange={(e) => setSignerPhone(e.target.value)}
+                  placeholder="11999999999"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Formato obrigatório: 55 + DDD + número (ex: 5592999106091)
+                  Apenas números, com DDD (mínimo 10 dígitos)
                 </p>
               </div>
 

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Loader2, User, Package, Calendar, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -15,7 +14,7 @@ import { useEntity } from '@/contexts/EntityContext';
 import { toast } from 'sonner';
 import { EventStatus } from '@/types';
 import { format } from 'date-fns';
-import { cn, formatPhoneToInternational } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
 const eventTypes = [
@@ -260,7 +259,7 @@ export function CreateClientWithEventDialog({
         .insert({
           name: clientData.name.trim(),
           email: clientData.email?.trim() || null,
-          phone: clientData.phone ? formatPhoneToInternational(clientData.phone) : null,
+          phone: clientData.phone?.trim() || null,
           address: clientData.address?.trim() || null,
           notes: clientData.notes?.trim() || null,
           client_type: clientData.client_type,
@@ -456,15 +455,14 @@ export function CreateClientWithEventDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="client-phone">Telefone (WhatsApp)</Label>
-              <PhoneInput
+              <Label htmlFor="client-phone">Telefone</Label>
+              <Input
                 id="client-phone"
-                value={clientData.phone || ''}
-                onChange={(value) => setClientData({ ...clientData, phone: value })}
-                placeholder="5592999106091"
+                value={clientData.phone}
+                onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
+                placeholder="(00) 00000-0000"
                 className={formErrors.phone ? 'border-destructive' : ''}
               />
-              <p className="text-xs text-muted-foreground">Formato: 55 + DDD + número</p>
               {formErrors.phone && <p className="text-sm text-destructive">{formErrors.phone}</p>}
             </div>
 
