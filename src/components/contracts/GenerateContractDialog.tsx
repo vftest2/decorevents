@@ -57,14 +57,13 @@ export function GenerateContractDialog({
     setStep('sending');
 
     try {
-      // Convert file to base64
+      // Convert file to base64 with MIME type prefix (required by ClickSign)
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const result = reader.result as string;
-          // Remove data:application/pdf;base64, prefix
-          const base64 = result.split(',')[1];
-          resolve(base64);
+          // Keep the full data URI with MIME type - ClickSign requires it
+          resolve(result);
         };
         reader.onerror = reject;
       });
