@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2, User, Package, Calendar, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -456,11 +457,10 @@ export function CreateClientWithEventDialog({
 
             <div className="space-y-2">
               <Label htmlFor="client-phone">Telefone</Label>
-              <Input
+              <PhoneInput
                 id="client-phone"
                 value={clientData.phone}
-                onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
-                placeholder="(00) 00000-0000"
+                onChange={(value) => setClientData({ ...clientData, phone: value })}
                 className={formErrors.phone ? 'border-destructive' : ''}
               />
               {formErrors.phone && <p className="text-sm text-destructive">{formErrors.phone}</p>}

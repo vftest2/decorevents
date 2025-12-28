@@ -11,12 +11,17 @@ const CLICKSIGN_BASE_URL = 'https://app.clicksign.com/api/v3';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-// Helper to format phone number to Brazilian format (only digits, with country code)
+// Helper to ensure phone number is in correct format (55DDXXXXXXXXX)
 function formatPhoneNumber(phone: string): string {
+  // Remove all non-digits
   let formatted = phone.replace(/\D/g, '');
+  
+  // Add country code if not present
   if (!formatted.startsWith('55')) {
     formatted = '55' + formatted;
   }
+  
+  console.log(`Phone formatted: ${phone} -> ${formatted}`);
   return formatted;
 }
 

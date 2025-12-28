@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput, formatPhoneForApi, extractPhoneDigits } from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -42,10 +43,21 @@ export function GenerateContractDialog({
   );
 
   const handleSendWhatsApp = async () => {
+    const phoneDigits = extractPhoneDigits(signerPhone);
+    
     if (!signerName || !signerPhone || !title || !message) {
       toast({
         title: 'Campos obrigatórios',
         description: 'Preencha todos os campos para enviar o aceite.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast({
+        title: 'Telefone inválido',
+        description: 'O telefone deve ter DDD (2 dígitos) + número (8 ou 9 dígitos).',
         variant: 'destructive'
       });
       return;
@@ -71,13 +83,14 @@ export function GenerateContractDialog({
         throw new Error(`Erro ao criar contrato: ${contractError.message}`);
       }
 
-      // 2. Send to ClickSign via WhatsApp Acceptance
+      // 2. Send to ClickSign via WhatsApp Acceptance (format phone as 55DDXXXXXXXXX)
+      const formattedPhone = formatPhoneForApi(signerPhone);
       const { data, error } = await supabase.functions.invoke('clicksign', {
         body: {
           action: 'create_whatsapp_acceptance',
           contractId: contract.id,
           signerName,
-          signerPhone,
+          signerPhone: formattedPhone,
           title,
           message
         }
@@ -158,14 +171,13 @@ export function GenerateContractDialog({
 
               <div>
                 <Label htmlFor="signer-phone">WhatsApp do Cliente</Label>
-                <Input
+                <PhoneInput
                   id="signer-phone"
                   value={signerPhone}
-                  onChange={(e) => setSignerPhone(e.target.value)}
-                  placeholder="11999999999"
+                  onChange={(value) => setSignerPhone(value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Apenas números, com DDD (mínimo 10 dígitos)
+                  Formato: (DD) XXXXXXXXX
                 </p>
               </div>
 
