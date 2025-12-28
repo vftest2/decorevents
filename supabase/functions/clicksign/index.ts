@@ -72,7 +72,7 @@ serve(async (req) => {
         }
         formattedPhone = '+' + formattedPhone;
         
-        console.log('Creating signer with phone:', formattedPhone);
+        console.log('Creating signer with phone:', formattedPhone, 'email:', signerEmail);
         
         const createSignerResponse = await fetch(`${CLICKSIGN_BASE_URL}/signers?access_token=${CLICKSIGN_API_KEY}`, {
           method: 'POST',
@@ -83,7 +83,7 @@ serve(async (req) => {
               email: signerEmail,
               phone_number: formattedPhone,
               auths: ['whatsapp'],
-              delivery: 'whatsapp'
+              communicate_by: 'whatsapp'
             }
           })
         });
