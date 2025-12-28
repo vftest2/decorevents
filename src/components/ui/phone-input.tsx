@@ -30,13 +30,9 @@ export const extractPhoneDigits = (formatted: string): string => {
   return formatted.replace(/\D/g, '');
 };
 
-// Format phone for API (55 + DD + number)
+// Format phone for API - just return digits, the edge function will add 55
 export const formatPhoneForApi = (phone: string): string => {
-  const digits = extractPhoneDigits(phone);
-  if (digits.length >= 10) {
-    return `55${digits}`;
-  }
-  return digits;
+  return extractPhoneDigits(phone);
 };
 
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
