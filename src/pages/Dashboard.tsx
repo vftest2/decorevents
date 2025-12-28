@@ -1,33 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
   DollarSign, 
-  Clock, 
-  Package,
-  TrendingUp,
-  PartyPopper,
-  Loader2
+  CheckCircle,
+  FileText,
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { RecentEvents } from '@/components/dashboard/RecentEvents';
 import { UpcomingCalendar } from '@/components/dashboard/UpcomingCalendar';
+import { MonthlyRevenueChart } from '@/components/dashboard/MonthlyRevenueChart';
+import { EventsByTypeChart } from '@/components/dashboard/EventsByTypeChart';
+import { UpcomingEventCard } from '@/components/dashboard/UpcomingEventCard';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEntity } from '@/contexts/EntityContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths, format, startOfYear, endOfYear } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Event } from '@/types';
 
 interface DashboardMetrics {
+  eventsThisMonth: number;
   confirmedEvents: number;
   monthlyRevenue: number;
   pendingBudgets: number;
-  inventoryUtilization: number;
-  eventsThisWeek: number;
-  totalEvents: number;
-  totalInventoryItems: number;
+  previousMonthEvents: number;
+  previousMonthConfirmed: number;
+  previousMonthRevenue: number;
+}
+
+interface MonthlyData {
+  month: string;
+  revenue: number;
+}
+
+interface EventTypeData {
+  name: string;
+  value: number;
+  color: string;
 }
 
 export default function Dashboard() {
@@ -35,16 +49,18 @@ export default function Dashboard() {
   const { currentEntity } = useEntity();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
+    eventsThisMonth: 0,
     confirmedEvents: 0,
     monthlyRevenue: 0,
     pendingBudgets: 0,
-    inventoryUtilization: 0,
-    eventsThisWeek: 0,
-    totalEvents: 0,
-    totalInventoryItems: 0
+    previousMonthEvents: 0,
+    previousMonthConfirmed: 0,
+    previousMonthRevenue: 0,
   });
-  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [eventTypeData, setEventTypeData] = useState<EventTypeData[]>([]);
 
   useEffect(() => {
     if (currentEntity?.id) {
@@ -58,8 +74,10 @@ export default function Dashboard() {
       const now = new Date();
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
-      const weekStart = startOfWeek(now, { weekStartsOn: 0 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 0 });
+      const prevMonthStart = startOfMonth(subMonths(now, 1));
+      const prevMonthEnd = endOfMonth(subMonths(now, 1));
+      const yearStart = startOfYear(now);
+      const yearEnd = endOfYear(now);
 
       // Fetch all events for the entity
       const { data: eventsData, error: eventsError } = await supabase
@@ -104,49 +122,64 @@ export default function Dashboard() {
       setAllEvents(transformedEvents);
 
       // Filter for upcoming events (not finished)
-      const upcomingEvents = transformedEvents
-        .filter(e => e.status !== 'finished')
+      const upcoming = transformedEvents
+        .filter(e => e.status !== 'finished' && new Date(e.startDate) >= now)
         .slice(0, 4);
-      setRecentEvents(upcomingEvents);
+      setUpcomingEvents(upcoming);
 
-      // Calculate metrics
-      const monthEvents = eventsData?.filter(e => {
+      // Calculate current month metrics
+      const currentMonthEvents = eventsData?.filter(e => {
         const eventDate = new Date(e.start_date);
         return eventDate >= monthStart && eventDate <= monthEnd;
       }) || [];
 
-      const weekEvents = eventsData?.filter(e => {
+      const previousMonthEvents = eventsData?.filter(e => {
         const eventDate = new Date(e.start_date);
-        return eventDate >= weekStart && eventDate <= weekEnd;
+        return eventDate >= prevMonthStart && eventDate <= prevMonthEnd;
       }) || [];
 
-      const confirmedMonthEvents = monthEvents.filter(e => e.status !== 'budget');
+      const confirmedCurrentMonth = currentMonthEvents.filter(e => e.status !== 'budget');
+      const confirmedPreviousMonth = previousMonthEvents.filter(e => e.status !== 'budget');
       const pendingBudgets = eventsData?.filter(e => e.status === 'budget').length || 0;
-      const monthlyRevenue = confirmedMonthEvents.reduce((sum, e) => sum + (e.total_value || 0), 0);
-
-      // Fetch inventory data
-      const { data: inventoryData, error: inventoryError } = await supabase
-        .from('inventory_items')
-        .select('total_quantity, available_quantity')
-        .eq('entity_id', currentEntity!.id);
-
-      if (inventoryError) throw inventoryError;
-
-      const totalQuantity = inventoryData?.reduce((sum, i) => sum + (i.total_quantity || 0), 0) || 0;
-      const availableQuantity = inventoryData?.reduce((sum, i) => sum + (i.available_quantity || 0), 0) || 0;
-      const inventoryUtilization = totalQuantity > 0 
-        ? Math.round(((totalQuantity - availableQuantity) / totalQuantity) * 100) 
-        : 0;
+      const monthlyRevenue = confirmedCurrentMonth.reduce((sum, e) => sum + (e.total_value || 0), 0);
+      const prevMonthRevenue = confirmedPreviousMonth.reduce((sum, e) => sum + (e.total_value || 0), 0);
 
       setMetrics({
-        confirmedEvents: confirmedMonthEvents.length,
+        eventsThisMonth: currentMonthEvents.length,
+        confirmedEvents: confirmedCurrentMonth.length,
         monthlyRevenue,
         pendingBudgets,
-        inventoryUtilization,
-        eventsThisWeek: weekEvents.length,
-        totalEvents: eventsData?.length || 0,
-        totalInventoryItems: inventoryData?.length || 0
+        previousMonthEvents: previousMonthEvents.length,
+        previousMonthConfirmed: confirmedPreviousMonth.length,
+        previousMonthRevenue: prevMonthRevenue,
       });
+
+      // Calculate monthly revenue data for chart
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const monthlyRevenueData = months.map((month, index) => {
+        const monthEvents = eventsData?.filter(e => {
+          const eventDate = new Date(e.start_date);
+          return eventDate.getMonth() === index && eventDate.getFullYear() === now.getFullYear() && e.status !== 'budget';
+        }) || [];
+        return {
+          month,
+          revenue: monthEvents.reduce((sum, e) => sum + (e.total_value || 0), 0),
+        };
+      });
+      setMonthlyData(monthlyRevenueData);
+
+      // Calculate event types data for chart
+      const eventTypes: Record<string, number> = {};
+      eventsData?.forEach(e => {
+        const type = e.event_type || 'Outros';
+        eventTypes[type] = (eventTypes[type] || 0) + 1;
+      });
+      const typeData = Object.entries(eventTypes).map(([name, value]) => ({
+        name,
+        value,
+        color: '#6B7280',
+      }));
+      setEventTypeData(typeData);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -155,6 +188,16 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  const calculateTrend = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, isPositive: true };
+    const change = ((current - previous) / previous) * 100;
+    return { value: Math.abs(Math.round(change)), isPositive: change >= 0 };
+  };
+
+  const eventsTrend = calculateTrend(metrics.eventsThisMonth, metrics.previousMonthEvents);
+  const confirmedTrend = calculateTrend(metrics.confirmedEvents, metrics.previousMonthConfirmed);
+  const revenueTrend = calculateTrend(metrics.monthlyRevenue, metrics.previousMonthRevenue);
 
   if (loading) {
     return (
@@ -171,114 +214,143 @@ export default function Dashboard() {
     <MainLayout>
       <Header 
         title="Dashboard" 
-        subtitle="Visão geral da sua entidade"
-        showAddButton
-        addButtonLabel="Novo Evento"
-        onAddClick={() => navigate('/agenda')}
+        subtitle="Visão geral do seu negócio"
       />
 
       <div className="p-6 space-y-6">
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Eventos Confirmados"
-            value={metrics.confirmedEvents}
-            subtitle="Este mês"
-            icon={Calendar}
-            variant="primary"
-            delay={0}
-          />
-          <MetricCard
-            title="Faturamento Mensal"
-            value={`R$ ${metrics.monthlyRevenue.toLocaleString('pt-BR')}`}
-            icon={DollarSign}
-            variant="success"
-            delay={100}
-          />
-          <MetricCard
-            title="Orçamentos Pendentes"
-            value={metrics.pendingBudgets}
-            subtitle="Aguardando aprovação"
-            icon={Clock}
-            variant="warning"
-            delay={200}
-          />
-          <MetricCard
-            title="Utilização do Estoque"
-            value={`${metrics.inventoryUtilization}%`}
-            subtitle="Itens em uso"
-            icon={Package}
-            delay={300}
-          />
+          {/* Eventos do Mês */}
+          <Card className="animate-slide-up">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Eventos do Mês</p>
+                  <p className="text-3xl font-bold text-foreground">{metrics.eventsThisMonth}</p>
+                  <p className="text-xs text-primary font-medium">
+                    {eventsTrend.isPositive ? '↗' : '↘'} {eventsTrend.value}% vs mês anterior
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Confirmados */}
+          <Card className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Confirmados</p>
+                  <p className="text-3xl font-bold text-foreground">{metrics.confirmedEvents}</p>
+                  <p className="text-xs text-primary font-medium">
+                    {confirmedTrend.isPositive ? '↗' : '↘'} {confirmedTrend.value}% vs mês anterior
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Faturamento */}
+          <Card className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Faturamento</p>
+                  <p className="text-3xl font-bold text-foreground">
+                    R$ {metrics.monthlyRevenue.toLocaleString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-primary font-medium">
+                    {revenueTrend.isPositive ? '↗' : '↘'} {revenueTrend.value}% vs mês anterior
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100">
+                  <DollarSign className="h-5 w-5 text-yellow-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Orçamentos Pendentes */}
+          <Card className="animate-slide-up" style={{ animationDelay: '150ms' }}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Orçamentos Pendentes</p>
+                  <p className="text-3xl font-bold text-foreground">{metrics.pendingBudgets}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Events */}
+          <MonthlyRevenueChart data={monthlyData} />
+          <EventsByTypeChart data={eventTypeData} />
+        </div>
+
+        {/* Bottom Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Próximos Eventos */}
           <div className="lg:col-span-2">
-            <div className="rounded-xl border border-border bg-card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <PartyPopper className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">Próximos Eventos</h2>
-                </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <CardTitle className="text-base font-semibold">Próximos Eventos</CardTitle>
                 <button 
                   onClick={() => navigate('/agenda')}
-                  className="text-sm font-medium text-primary hover:underline"
+                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Ver todos
+                  <ArrowRight className="h-4 w-4" />
                 </button>
-              </div>
-              <RecentEvents events={recentEvents} />
-            </div>
+              </CardHeader>
+              <CardContent>
+                {upcomingEvents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                      <Calendar className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">Nenhum evento</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Comece criando seu primeiro evento!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {upcomingEvents.map((event) => (
+                      <UpcomingEventCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Calendar Widget */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">Calendário</h2>
-            </div>
-            <UpcomingCalendar events={allEvents} />
-          </div>
-        </div>
+          {/* Right Column - Calendar + Quick Actions */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold capitalize">
+                    {format(new Date(), 'MMMM yyyy', { locale: ptBR })}
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <UpcomingCalendar events={allEvents} />
+              </CardContent>
+            </Card>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: '400ms' }}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{metrics.eventsThisWeek}</p>
-                <p className="text-sm text-muted-foreground">Eventos esta semana</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: '500ms' }}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
-                <Calendar className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{metrics.totalEvents}</p>
-                <p className="text-sm text-muted-foreground">Total de eventos</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: '600ms' }}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10">
-                <Package className="h-6 w-6 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{metrics.totalInventoryItems}</p>
-                <p className="text-sm text-muted-foreground">Itens no estoque</p>
-              </div>
-            </div>
+            <QuickActions />
           </div>
         </div>
       </div>

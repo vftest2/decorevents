@@ -42,14 +42,14 @@ export function UpcomingCalendar({ events }: UpcomingCalendarProps) {
     <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground capitalize">
+        <h3 className="font-semibold text-foreground capitalize text-sm">
           {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
         </h3>
         <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -57,7 +57,7 @@ export function UpcomingCalendar({ events }: UpcomingCalendarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
           >
             <ChevronRight className="h-4 w-4" />
