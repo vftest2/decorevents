@@ -448,6 +448,9 @@ export default function EventDetails() {
           clientPhone={event.clients?.phone || undefined}
           eventTitle={event.title}
           eventStatus={event.status}
+          totalValue={event.total_value || undefined}
+          startDate={event.start_date}
+          address={event.address || undefined}
         />
 
         {/* Event Items */}
