@@ -83,14 +83,13 @@ export function GenerateContractDialog({
         throw new Error(`Erro ao criar contrato: ${contractError.message}`);
       }
 
-      // 2. Send to ClickSign via WhatsApp Acceptance (format phone as 55DDXXXXXXXXX)
-      const formattedPhone = formatPhoneForApi(signerPhone);
+      // 2. Send WhatsApp Acceptance (ClickSign expects ONLY DDD+number)
       const { data, error } = await supabase.functions.invoke('clicksign', {
         body: {
           action: 'create_whatsapp_acceptance',
           contractId: contract.id,
           signerName,
-          signerPhone: formattedPhone,
+          signerPhone: phoneDigits,
           title,
           message
         }
