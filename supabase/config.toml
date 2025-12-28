@@ -2,3 +2,6 @@ project_id = "kvsmtzzgdlubzmrwvjxz"
 
 [functions.clicksign]
 verify_jwt = true
+
+[functions.clicksign-webhook]
+verify_jwt = false
